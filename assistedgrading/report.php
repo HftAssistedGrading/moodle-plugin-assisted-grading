@@ -7,14 +7,8 @@
  * @package   quiz_assistedgrading
  * @copyright 2014 HFT Stuttgart
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- * @author	Andre Lohan
  */
 defined('MOODLE_INTERNAL') || die();
-
-
-//if (!class_exists('quiz_grading_report')) {
-//    require_once($CFG->dirroot . '/mod/quiz/report/grading/report.php');
-//}
 
 require_once($CFG->dirroot . '/mod/quiz/report/assistedgrading/assistedgradingsettings_form.php');
 
@@ -30,16 +24,22 @@ require_once($CFG->dirroot . '/mod/quiz/report/assistedgrading/assistedgradingse
  */
 class quiz_assistedgrading_report extends quiz_default_report {
 
-
+    /** @const Used for storing and retrieving plugin configuration. */
+    const PLUGIN = 'quiz_assistedgrading';
+    
     const DEFAULT_PAGE_SIZE = -1;
     const DEFAULT_ORDER = 'random';
     
-    
-    // Webservice default settings
-    const WS_POST_ADDRESS = 'http://123.456.789.123:8080/GA/webresources/gradingassistant/post';
-    const WS_PING_ADDRESS = 'http://123.456.789.123:8080/GA/webresources/gradingassistant/ping';
-       
- 
+    /** @const Webservice default settings. */
+    const WS_BASE_ADDRESS = 'http://193.196.143.147:8080/GA/webresources/gradingassistant';
+    const WS_POST_ADDRESS = '/post';
+    const WS_PING_ADDRESS = '/ping';
+
+    // Dummy webservice for testing
+    //const WS_BASE_ADDRESS = 'http://moodle.localhost';
+    //const WS_POST_ADDRESS = '/ws.php'; // Simple script that generates random score number
+    //const WS_PING_ADDRESS = '/ws_ping.php'; // Just returns true
+
     protected $viewoptions = array();
     protected $questions;
     protected $cm;
@@ -65,7 +65,16 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $pagesize = optional_param('pagesize', self::DEFAULT_PAGE_SIZE, PARAM_INT);
         $page = optional_param('page', 0, PARAM_INT);
         $order = optional_param('order', self::DEFAULT_ORDER, PARAM_ALPHA);
-        $wsaddress = optional_param('wsaddress', self::WS_POST_ADDRESS, PARAM_ALPHA);
+        $wsaddress_cfg = get_config(self::PLUGIN, 'wsaddress');
+        $wsaddress = optional_param(
+                'wsaddress', 
+                $wsaddress_cfg !== FALSE ? $wsaddress_cfg : self::WS_BASE_ADDRESS, 
+                PARAM_TEXT
+                );
+        // Store wsaddress setting if required
+        if ($wsaddress != $wsaddress_cfg) {
+            set_config('wsaddress', $wsaddress, self::PLUGIN);
+        }
 
         // Assemble the options requried to reload this page.
         $optparams = array('includeauto', 'page');
@@ -322,13 +331,13 @@ class quiz_assistedgrading_report extends quiz_default_report {
     }
 
     /**
-     * Webservice post-
+     * Webservice post via cURL.
      * 
-     * @global type $OUTPUT
-     * @param type $wsaddress
-     * @param type $message
-     * @param type $contentType
-     * @return boolean
+     * @global object $OUTPUT
+     * @param string $wsaddress
+     * @param string $message
+     * @param string $contentType
+     * @return string
      */
     protected function ws_post($wsaddress, $message, $contentType = 'application/json') {
         global $OUTPUT;
@@ -358,21 +367,24 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $content_type = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
         curl_close($ch);
 
-        $debug = "";
+        $debug = '';
 
-        //echo $OUTPUT->container_start('notifyproblem', 'debug');
+        $debug .= 'cURL CURLOPT_URL: ' . $wsaddress . '<br/>';
         $debug .= 'cURL status: ' . $status . '<br/>';
         $debug .= 'cURL content type: ' . $content_type . '<br/>';
         $debug .= 'WS reply: ';
         $debug .= print_r($result, true);
 
-        //echo $OUTPUT->notification($debug);
-        //echo $OUTPUT->container_end();
+        //echo $OUTPUT->notification($debug); // For debuging print cURL details
         return $result;
     }
 
     /**
      * Performs availability check for webservice.
+     * 
+     * The webservice is expected to provide a ping method that just returns
+     * true to see if the webservice is available and responding before
+     * sending data to it.
      * 
      * @param String $wsaddress
      * @return true or false
@@ -389,7 +401,6 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $result = curl_exec($ch);
         $status_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         if ($status_code == 200 && $result == 'true') {
-            //echo $OUTPUT->container(get_string('wsavail', 'quiz_assistedgrading'), 'alert important', 'notice');
             return true;
         }
         echo $OUTPUT->notification(get_string('wsunavail', 'quiz_assistedgrading'));
@@ -412,7 +423,6 @@ class quiz_assistedgrading_report extends quiz_default_report {
 
     protected function display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress) {
         global $OUTPUT;
-
 
         if ($pagesize * $page >= $counts->$grade) {
             $page = 0;
@@ -448,7 +458,6 @@ class quiz_assistedgrading_report extends quiz_default_report {
 
         // Print the heading and form.
         echo question_engine::initialise_js();
-       
 
         $a = new stdClass();
         $a->number = $this->questions[$slot]->number;
@@ -456,13 +465,10 @@ class quiz_assistedgrading_report extends quiz_default_report {
         echo $OUTPUT->heading(get_string('gradingquestionx', 'quiz_grading', $a), 3);
         echo html_writer::tag('p', html_writer::link($this->list_questions_url(), get_string('backtothelistofquestions', 'quiz_grading')), array('class' => 'mdl-align'));
 
-       
-        //$mform->display();
-        
-        
+        $mform->display();
 
         // Check if webservice is available before sending data
-        if (!$this->check_ws_availability(self::WS_PING_ADDRESS)) {
+        if (!$this->check_ws_availability($wsaddress . self::WS_PING_ADDRESS)) {
             return;
         }
 
@@ -471,7 +477,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $a->from = $page * $pagesize + 1;
         $a->to = min(($page + 1) * $pagesize, $count);
         $a->of = $count;
-       // echo $OUTPUT->heading(get_string('gradingattemptsxtoyofz', 'quiz_grading', $a), 3);
+        echo $OUTPUT->heading(get_string('gradingattemptsxtoyofz', 'quiz_grading', $a), 3);
 
         if ($count > $pagesize && $order != 'random') {
             echo $OUTPUT->paging_bar($count, $page, $pagesize, $this->grade_question_url($slot, $questionid, $grade, false));
@@ -509,7 +515,6 @@ class quiz_assistedgrading_report extends quiz_default_report {
             
             // Temp test
             //$myqa = $quba->get_question_attempt($slot);
-                        
             
             //$record['rightanswer'] = $quba->get_right_answer_summary($slot);
             $record['max'] = $question->defaultmark;
@@ -521,13 +526,13 @@ class quiz_assistedgrading_report extends quiz_default_report {
         }
         $wsdata['records'] = $records;
         // for debug purposes show request to webservice before posting
-//         echo "<!-- Request JSON: \n";
-//         echo json_encode($wsdata);
-//         echo "\n-->\n";
-        $ws_result = $this->ws_post($wsaddress, $wsdata);
-//         echo "\n\n<!-- Response from webservice:\n";
-//         print_r($ws_result);
-//         echo "\n-->\n";
+        echo "<!-- Request JSON: \n";
+        echo json_encode($wsdata);
+        echo "\n-->\n";
+        $ws_result = $this->ws_post($wsaddress . self::WS_POST_ADDRESS, $wsdata);
+        echo "\n\n<!-- Response from webservice:\n";
+        print_r($ws_result);
+        echo "\n-->\n";
 
         $json_reply = json_decode($ws_result, true);
 
@@ -574,11 +579,10 @@ class quiz_assistedgrading_report extends quiz_default_report {
                     $resp = $rep;
                 }
             }
-            
-//             if ($resp !== null) {
-//             echo html_writer::tag('div', '[Score: ' . $resp['score'] . '] ' . $resp['answer'],
-//                 array('class' => 'alert qtype_essay_response readonly'));
-//             }
+            if ($resp !== null) {
+            echo html_writer::tag('div', '[Score: ' . $resp['score'] . '] ' . $resp['answer'],
+                array('class' => 'alert qtype_essay_response readonly'));
+            }
             echo $quba->render_question($slot, $displayoptions, $this->questions[$slot]->number);
             
         }
