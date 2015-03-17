@@ -477,7 +477,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $a->from = $page * $pagesize + 1;
         $a->to = min(($page + 1) * $pagesize, $count);
         $a->of = $count;
-     //   echo $OUTPUT->heading(get_string('gradingattemptsxtoyofz', 'quiz_grading', $a), 3);
+        echo $OUTPUT->heading(get_string('gradingattemptsxtoyofz', 'quiz_grading', $a), 3);
 
         if ($count > $pagesize && $order != 'random') {
             echo $OUTPUT->paging_bar($count, $page, $pagesize, $this->grade_question_url($slot, $questionid, $grade, false));
