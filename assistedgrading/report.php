@@ -31,14 +31,14 @@ class quiz_assistedgrading_report extends quiz_default_report {
     const DEFAULT_ORDER = 'random';
     
     /** @const Webservice default settings. */
-    //const WS_BASE_ADDRESS = 'http://193.196.143.147:8080/GA/webresources/gradingassistant';
-    //const WS_POST_ADDRESS = '/post';
-    //const WS_PING_ADDRESS = '/ping';
+    const WS_BASE_ADDRESS = 'http://193.196.143.147:8080/GA/webresources/gradingassistant';
+    const WS_POST_ADDRESS = '/post';
+    const WS_PING_ADDRESS = '/ping';
 
     // Dummy webservice for testing
-    const WS_BASE_ADDRESS = 'http://moodle.localhost';
-    const WS_POST_ADDRESS = '/ws.php'; // Simple script that generates random score number
-    const WS_PING_ADDRESS = '/ws_ping.php'; // Just returns true
+    //const WS_BASE_ADDRESS = 'http://moodle.localhost';
+    //const WS_POST_ADDRESS = '/ws.php'; // Simple script that generates random score number
+    //const WS_PING_ADDRESS = '/ws_ping.php'; // Just returns true
 
     protected $viewoptions = array();
     protected $questions;
