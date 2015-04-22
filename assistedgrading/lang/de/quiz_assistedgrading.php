@@ -29,3 +29,5 @@ $string['wsavail'] = 'Webservice verfügbar';
 $string['wsunavail'] = 'Webservice nicht verfügbar';
 $string['curlnotfound'] = 'cURL Erweiterung nicht gefunden';
 $string['byscore'] = 'Nach Score';
+$string['addanswer'] = 'Antwort der Referenzantwort hinzufügen';
+$string['save'] = 'Speichern';

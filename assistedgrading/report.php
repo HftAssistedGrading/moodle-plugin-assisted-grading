@@ -5,7 +5,7 @@
  * Based on quiz report.
  * 
  * @package   quiz_assistedgrading
- * @copyright 2014 HFT Stuttgart
+ * @copyright 2015 HFT Stuttgart
  * @license   http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 defined('MOODLE_INTERNAL') || die();
@@ -31,20 +31,21 @@ class quiz_assistedgrading_report extends quiz_default_report {
     const DEFAULT_ORDER = 'random';
     
     /** @const Webservice default settings. */
-    const WS_BASE_ADDRESS = 'http://193.196.143.147:8080/GA/webresources/gradingassistant';
-    const WS_POST_ADDRESS = '/post';
-    const WS_PING_ADDRESS = '/ping';
+    //const WS_BASE_ADDRESS = 'http://193.196.143.147:8080/GA/webresources/gradingassistant';
+    //const WS_POST_ADDRESS = '/post';
+    //const WS_PING_ADDRESS = '/ping';
 
     // Dummy webservice for testing
-    //const WS_BASE_ADDRESS = 'http://moodle.localhost';
-    //const WS_POST_ADDRESS = '/ws.php'; // Simple script that generates random score number
-    //const WS_PING_ADDRESS = '/ws_ping.php'; // Just returns true
+    const WS_BASE_ADDRESS = 'http://moodle.localhost';
+    const WS_POST_ADDRESS = '/ws.php'; // Simple script that generates random score number
+    const WS_PING_ADDRESS = '/ws_ping.php'; // Just returns true
 
     protected $viewoptions = array();
     protected $questions;
     protected $cm;
     protected $quiz;
     protected $context;
+    protected $addanswers;
 
     public function display($quiz, $cm, $course) {
         global $CFG, $DB, $PAGE;
@@ -52,7 +53,13 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $this->quiz = $quiz;
         $this->cm = $cm;
         $this->course = $course;
-
+        
+        // add answers come as comma separated list in url due to internal redirect
+        $addanswers = optional_param('addanswers', null, PARAM_TEXT);
+        if ($addanswers) {
+            $this->addanswers = explode(',', $addanswers);
+        }
+        
         // Get the URL options.
         $slot = optional_param('slot', null, PARAM_INT);
         $questionid = optional_param('qid', null, PARAM_INT);
@@ -75,7 +82,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
         if ($wsaddress != $wsaddress_cfg) {
             set_config('wsaddress', $wsaddress, self::PLUGIN);
         }
-
+        
         // Assemble the options requried to reload this page.
         $optparams = array('includeauto', 'page');
         foreach ($optparams as $param) {
@@ -118,11 +125,13 @@ class quiz_assistedgrading_report extends quiz_default_report {
             throw new moodle_exception('unknownquestion', 'quiz_grading');
         }
 
+        
         // Process any submitted data.
         if ($data = data_submitted() && confirm_sesskey() && $this->validate_submitted_marks()) {
             $this->process_submitted_data();
-
-            redirect($this->grade_question_url($slot, $questionid, $grade, $page + 1));
+            // selected student answers get lost on redirect, put those in url
+            $addanswers = optional_param_array('addanswer', null, PARAM_INT);
+            redirect($this->grade_question_url($slot, $questionid, $grade, $page + 1, $addanswers));
         }
 
         // Get the group, and the list of significant users.
@@ -244,9 +253,12 @@ class quiz_assistedgrading_report extends quiz_default_report {
      * @param mixed $page = true, link to current page. false = omit page.
      *      number = link to specific page.
      */
-    protected function grade_question_url($slot, $questionid, $grade, $page = true) {
+    protected function grade_question_url($slot, $questionid, $grade, $page = true, $addanswers = null) {
         $url = $this->base_url();
         $url->params(array('slot' => $slot, 'qid' => $questionid, 'grade' => $grade));
+        if ($addanswers) {
+            $url->params(array('addanswers' => implode(',', $addanswers)));
+        }
         $url->params($this->viewoptions);
 
         $options = $this->viewoptions;
@@ -496,6 +508,10 @@ class quiz_assistedgrading_report extends quiz_default_report {
         // Compile list for webservice
         $wsdata = array();
         $records = array();
+        
+        // This will be filled by selected students answers
+        $add_to_referenceanswer = '';
+        
         foreach ($qubaids as $qubaid) {
             $record = array();
             $attempt = $attempts[$qubaid];
@@ -513,6 +529,12 @@ class quiz_assistedgrading_report extends quiz_default_report {
             $record['referenceanswer'] = str_replace("\n", ' ', $question->graderinfo);
             $record['answer'] = str_replace("\n", ' ', $quba->get_response_summary($slot));
             
+            // Append students answer to reference
+            if (is_array($this->addanswers) && in_array($quba->get_id(), $this->addanswers)) {
+                // Adding student answer to reference answer
+                $add_to_referenceanswer .= "\n".$record['answer'];
+            }
+            
             // Temp test
             //$myqa = $quba->get_question_attempt($slot);
             
@@ -524,7 +546,17 @@ class quiz_assistedgrading_report extends quiz_default_report {
 
             $records[] = $record;
         }
+        
+        // After collecting student answers marked for adding to reference answer, inject them on all records
+        if ($add_to_referenceanswer) {
+            foreach ($records as $key => $record) {
+                $record['referenceanswer'] .= $add_to_referenceanswer;
+                $records[$key] = $record;
+            }
+        }
+        
         $wsdata['records'] = $records;
+        
         // for debug purposes show request to webservice before posting
         echo "<!-- Request JSON: \n";
         echo json_encode($wsdata);
@@ -571,7 +603,9 @@ class quiz_assistedgrading_report extends quiz_default_report {
             if ($heading) {
                 echo $OUTPUT->heading($heading, 4);
             }
-            
+            echo html_writer::checkbox("addanswer[]", $quba->get_id(), 
+                    (is_array($this->addanswers) && in_array($quba->get_id(), $this->addanswers)), 
+                    get_string('addanswer', 'quiz_assistedgrading'));
             // Find answer from webservice
             $resp = null;
             foreach ($json_reply as $rep) {
@@ -588,7 +622,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
         }
 
         echo html_writer::tag('div', html_writer::empty_tag('input', array(
-                    'type' => 'submit', 'value' => get_string('saveandnext', 'quiz_grading'))), array('class' => 'mdl-align')) .
+                    'type' => 'submit', 'value' => get_string('save', 'quiz_assistedgrading'))), array('class' => 'mdl-align')) .
         html_writer::end_tag('div') . html_writer::end_tag('form');
     }
 
