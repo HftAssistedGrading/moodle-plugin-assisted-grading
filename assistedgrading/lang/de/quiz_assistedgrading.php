@@ -31,3 +31,7 @@ $string['curlnotfound'] = 'cURL Erweiterung nicht gefunden';
 $string['byscore'] = 'Nach Score';
 $string['addanswer'] = 'Antwort der Referenzantwort hinzufügen';
 $string['save'] = 'Speichern';
+$string['byscoredesc'] = 'Nach Score absteigend';
+$string['byscoreasc'] = 'Nach Score aufsteigend';
+$string['byscorerand'] = 'Zufällig';
+$string['orderby'] = 'Sortieren nach';

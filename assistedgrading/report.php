@@ -29,16 +29,17 @@ class quiz_assistedgrading_report extends quiz_default_report {
     
     const DEFAULT_PAGE_SIZE = -1;
     const DEFAULT_ORDER = 'random';
-    
+    const DEFAULT_SCOREORDER = 'desc';
+
     /** @const Webservice default settings. */
-    const WS_BASE_ADDRESS = 'http://193.196.143.147:8080/GA/webresources/gradingassistant';
-    const WS_POST_ADDRESS = '/post';
-    const WS_PING_ADDRESS = '/ping';
+    //const WS_BASE_ADDRESS = 'http://193.196.143.147:8080/GA/webresources/gradingassistant';
+    //const WS_POST_ADDRESS = '/post';
+    //const WS_PING_ADDRESS = '/ping';
 
     // Dummy webservice for testing
-    //const WS_BASE_ADDRESS = 'http://moodle.localhost';
-    //const WS_POST_ADDRESS = '/ws.php'; // Simple script that generates random score number
-    //const WS_PING_ADDRESS = '/ws_ping.php'; // Just returns true
+    const WS_BASE_ADDRESS = 'http://moodle.localhost';
+    const WS_POST_ADDRESS = '/ws.php'; // Simple script that generates random score number
+    const WS_PING_ADDRESS = '/ws_ping.php'; // Just returns true
 
     protected $viewoptions = array();
     protected $questions;
@@ -82,6 +83,9 @@ class quiz_assistedgrading_report extends quiz_default_report {
         if ($wsaddress != $wsaddress_cfg) {
             set_config('wsaddress', $wsaddress, self::PLUGIN);
         }
+
+        $scoreorder = optional_param('scoreorder', self::DEFAULT_SCOREORDER, PARAM_ALPHA);
+
         
         // Assemble the options requried to reload this page.
         $optparams = array('includeauto', 'page');
@@ -98,6 +102,9 @@ class quiz_assistedgrading_report extends quiz_default_report {
         }
         if ($wsaddress != self::WS_POST_ADDRESS) {
             $this->viewoptions['wsaddress'] = $wsaddress;
+        }
+        if ($scoreorder != self::DEFAULT_SCOREORDER) {
+            $this->viewoptions['scoreorder'] = $scoreorder;
         }
 
         // Check permissions.
@@ -168,7 +175,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
         } else if (!$slot) {
             $this->display_index();
         } else {
-            $this->display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress);
+            $this->display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress, $scoreorder);
         }
         return true;
     }
@@ -426,14 +433,40 @@ class quiz_assistedgrading_report extends quiz_default_report {
      * @param Array $b
      * @return Sorted array by score
      */
-    protected function sort_by_score($a, $b) {
+    protected function sort_by_score_desc($a, $b) {
         if ($a['score'] == $b['score']) {
             return 0;
         }
         return ($a['score'] > $b['score']) ? -1 : 1;
     }
 
-    protected function display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress) {
+    /**
+     * Used for usort to sort question attempts by ascending score.
+     *
+     * @param Array $a
+     * @param Array $b
+     * @return Sorted array by score
+     */
+    protected function sort_by_score_asc($a, $b) {
+        if ($a['score'] == $b['score']) {
+            return 0;
+        }
+        return ($a['score'] < $b['score']) ? -1 : 1;
+    }
+
+    /**
+     * Used for usort to randomize question attempts.
+     *
+     * @param Array $a
+     * @param Array $b
+     * @return Randomized array
+     */
+    protected function sort_by_score_rand($a, $b) {
+        return rand(-1, 1);
+    }
+
+
+    protected function display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress, $scoreorder) {
         global $OUTPUT;
 
         if ($pagesize * $page >= $counts->$grade) {
@@ -574,9 +607,17 @@ class quiz_assistedgrading_report extends quiz_default_report {
         }
 
         // sort attempts by score
-        usort($json_reply, array($this, 'sort_by_score'));
-        //echo "result after sorting:\n";
-        //print_r($json_reply);
+        switch ($scoreorder) {
+            case 'asc':
+                usort($json_reply, array($this, 'sort_by_score_asc'));
+                break;
+            case 'desc':
+                usort($json_reply, array($this, 'sort_by_score_desc'));
+                break;
+            case 'rand':
+                usort($json_reply, array($this, 'sort_by_score_rand'));
+                break;
+        }
 
         //if ($order === 'score') { // Not working yet due to forwarding order to database layer
         if (true) {

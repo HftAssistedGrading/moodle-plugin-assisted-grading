@@ -31,3 +31,7 @@ $string['curlnotfound'] = 'cURL extension not found';
 $string['byscore'] = 'By score';
 $string['addanswer'] = 'Add answer to reference answer';
 $string['save'] = 'Save';
+$string['byscoredesc'] = 'By score descending';
+$string['byscoreasc'] = 'By score ascending';
+$string['byscorerand'] = 'Random';
+$string['orderby'] = 'Sort by';

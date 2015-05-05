@@ -42,6 +42,7 @@ class quiz_assistedgrading_settings_form extends moodleform {
     protected $shownames;
     protected $showidnumbers;
     protected $wsaddress;
+    protected $scororder;
 
     public function __construct($hidden, $counts, $shownames, $showidnumbers, $wsaddress) {
         global $CFG;
@@ -100,7 +101,13 @@ class quiz_assistedgrading_settings_form extends moodleform {
         
         $mform->addElement('text', 'wsaddress', get_string('wsaddress', 'quiz_assistedgrading'));
         $mform->setType('wsaddress', PARAM_NOTAGS);
-        
+
+        $scoreorderoptions = array(
+            'desc' => get_string('byscoredesc', 'quiz_assistedgrading'),
+            'asc' => get_string('byscoreasc', 'quiz_assistedgrading'),
+            'rand' => get_string('byscorerand', 'quiz_assistedgrading'),
+        );
+        $mform->addElement('select', 'scoreorder', get_string('orderby', 'quiz_assistedgrading'), $scoreorderoptions);
 
         $mform->addElement('submit', 'submitbutton', get_string('changeoptions', 'quiz_grading'));
     }
