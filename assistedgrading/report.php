@@ -467,7 +467,9 @@ class quiz_assistedgrading_report extends quiz_default_report {
 
 
     protected function display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress, $scoreorder) {
-        global $OUTPUT;
+        global $OUTPUT, $PAGE, $CFG;
+
+        $PAGE->requires->js( new moodle_url($CFG->wwwroot . '/mod/quiz/report/assistedgrading/assistedgrading.js') );
 
         if ($pagesize * $page >= $counts->$grade) {
             $page = 0;
