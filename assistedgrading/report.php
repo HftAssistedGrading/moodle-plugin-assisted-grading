@@ -32,14 +32,14 @@ class quiz_assistedgrading_report extends quiz_default_report {
     const DEFAULT_SCOREORDER = 'desc';
 
     /** @const Webservice default settings. */
-    const WS_BASE_ADDRESS = 'http://193.196.143.147:8080/GA/webresources/gradingassistant';
-    const WS_POST_ADDRESS = '/post';
-    const WS_PING_ADDRESS = '/ping';
+    //const WS_BASE_ADDRESS = 'http://193.196.143.147:8080/GA/webresources/gradingassistant';
+    //const WS_POST_ADDRESS = '/post';
+    //const WS_PING_ADDRESS = '/ping';
 
     // Dummy webservice for testing
-    //const WS_BASE_ADDRESS = 'http://moodle.localhost';
-    //const WS_POST_ADDRESS = '/ws.php'; // Simple script that generates random score number
-    //const WS_PING_ADDRESS = '/ws_ping.php'; // Just returns true
+    const WS_BASE_ADDRESS = 'http://moodle.localhost';
+    const WS_POST_ADDRESS = '/ws.php'; // Simple script that generates random score number
+    const WS_PING_ADDRESS = '/ws_ping.php'; // Just returns true
 
     protected $viewoptions = array();
     protected $questions;
@@ -47,6 +47,11 @@ class quiz_assistedgrading_report extends quiz_default_report {
     protected $quiz;
     protected $context;
     protected $addanswers;
+
+    public function __construct() {
+        global $PAGE;
+        $PAGE->requires->jquery();
+    }
 
     public function display($quiz, $cm, $course) {
         global $CFG, $DB, $PAGE;
@@ -465,6 +470,14 @@ class quiz_assistedgrading_report extends quiz_default_report {
         return rand(-1, 1);
     }
 
+    /**
+     * Makes quiz data available for JavaScript.
+     *
+     * @param $data JSON encoded quiz data
+     */
+    protected function print_quiz_data_js($data) {
+        echo html_writer::script('var quiz_data=' . $data . ';');
+    }
 
     protected function display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress, $scoreorder) {
         global $OUTPUT, $PAGE, $CFG;
@@ -546,20 +559,13 @@ class quiz_assistedgrading_report extends quiz_default_report {
         
         // This will be filled by selected students answers
         $add_to_referenceanswer = '';
-        
+
         foreach ($qubaids as $qubaid) {
             $record = array();
             $attempt = $attempts[$qubaid];
-            //print_r($attempt);
             $quba = question_engine::load_questions_usage_by_activity($qubaid);
-            //print_r($quba->get_question_attempt($slot));
             $question = $quba->get_question($slot);
-            //print_r($question);
-            //print_r($attempt);
-            //print_r($quba);
             $record['id'] = intval($quba->get_id());
-            //$record['id'] = $attempt->id;
-            //$record['question'] = $question->get_question_summary();
             $record['question'] = str_replace("\n", ' ', $quba->get_question_summary($slot));
             $record['referenceanswer'] = str_replace("\n", ' ', $question->graderinfo);
             $record['answer'] = str_replace("\n", ' ', $quba->get_response_summary($slot));
@@ -570,10 +576,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
                 $add_to_referenceanswer .= "\n".$record['answer'];
             }
             
-            // Temp test
-            //$myqa = $quba->get_question_attempt($slot);
-            
-            //$record['rightanswer'] = $quba->get_right_answer_summary($slot);
+            //$record['rightanswer'] = $quba->get_right_answer_summary($slot); // Not used by moodle
             $record['max'] = $question->defaultmark;
             $record['numAttempts'] = intval($attempt->attempt);
             $record['min'] = floor(($attempt->timefinish - $attempt->timestart) / 60);
@@ -591,12 +594,16 @@ class quiz_assistedgrading_report extends quiz_default_report {
         }
         
         $wsdata['records'] = $records;
-        
+
+        // Strip HTML comment tags from debugging info
+        $wsdata = str_replace('-->', '', $wsdata);
+
         // for debug purposes show request to webservice before posting
         echo "<!-- Request JSON: \n";
         echo json_encode($wsdata);
         echo "\n-->\n";
         $ws_result = $this->ws_post($wsaddress . self::WS_POST_ADDRESS, $wsdata);
+        $ws_result = str_replace('-->', '', $ws_result);
         echo "\n\n<!-- Response from webservice:\n";
         print_r($ws_result);
         echo "\n-->\n";
@@ -630,6 +637,9 @@ class quiz_assistedgrading_report extends quiz_default_report {
             }
         }
 
+        // Make quiz data available to javascript for sanity checks
+        $this->print_quiz_data_js(json_encode($json_reply, JSON_PRETTY_PRINT));
+
         foreach ($qubaids as $qubaid) {
             $attempt = $attempts[$qubaid];
             $quba = question_engine::load_questions_usage_by_activity($qubaid);
@@ -641,6 +651,8 @@ class quiz_assistedgrading_report extends quiz_default_report {
             $displayoptions->history = question_display_options::HIDDEN;
             $displayoptions->manualcomment = question_display_options::EDITABLE;
 
+            // Wrap in another div because of not properly used ids by moodle
+            echo html_writer::start_div('', array('id' => 'quba_' . $quba->get_id()));
             
             $heading = $this->get_question_heading($attempt, $shownames, $showidnumbers);
             if ($heading) {
@@ -661,7 +673,8 @@ class quiz_assistedgrading_report extends quiz_default_report {
               //  array('class' => 'alert qtype_essay_response readonly'));
             //}
             echo $quba->render_question($slot, $displayoptions, $this->questions[$slot]->number);
-            
+
+            echo html_writer::end_div();
         }
 
         echo html_writer::tag('div', html_writer::empty_tag('input', array(
