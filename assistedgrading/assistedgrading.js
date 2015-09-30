@@ -93,10 +93,19 @@ jQuery(document).ready(function($) {
 
     $('.collapsible').on('click', function() {
         var res = $(this).attr('id').match(/collapse_(\d+)/);
+        var that = this;
         if (res) {
             var qubaid = res[1];
             console.log('Collapsing ' + qubaid);
-            $('#quba_content_' + qubaid).toggle('fast');
+            $('#quba_content_' + qubaid).toggle('fast', function() {
+                if ($(this).is(':visible')) {
+                    $(that).removeClass('collapsed')
+                    $(that).addClass('not-collapsed')
+                } else {
+                    $(that).removeClass('not-collapsed')
+                    $(that).addClass('collapsed')
+                }
+            });
         }
     });
 });

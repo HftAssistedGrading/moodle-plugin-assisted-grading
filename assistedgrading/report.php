@@ -664,7 +664,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
             
             $heading = $this->get_question_heading($attempt, $shownames, $showidnumbers);
             if ($heading) {
-                echo $OUTPUT->heading($heading, 4, 'collapsible', 'collapse_' . $quba->get_id());
+                echo $OUTPUT->heading($heading, 4, 'collapsible not-collapsed', 'collapse_' . $quba->get_id());
             }
             // Inner div will be collapsible
             echo html_writer::start_div('', array('id' => 'quba_content_' . $quba->get_id()));

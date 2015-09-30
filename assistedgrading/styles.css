@@ -22,7 +22,12 @@
     color: #000;
 }
 
-.collapsible:before {
-    content: "\25bc";
+.collapsible.not-collapsed:before {
+    content: "\25be \00a0";
+    cursor: pointer;
+}
+
+.collapsible.collapsed:before {
+    content: "\25b8 \00a0";
     cursor: pointer;
 }
