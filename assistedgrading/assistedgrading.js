@@ -5,8 +5,6 @@ jQuery(document).ready(function($) {
     // Wait a bit before firing sanity check on user input
     var timer;
     var delay = 1000;
-    // Cache points for each id
-    var points_by_id = [];
 
     /**
      * Parses moodle input id and returns quiz attempt id.
@@ -59,7 +57,7 @@ jQuery(document).ready(function($) {
      * @param qubaid
      */
     function sanity_check(qubaid) {
-        var points = points_by_id[qubaid];
+        var points = marks[qubaid];
         var similar_answers = get_similar_answers(qubaid);
         if (similar_answers) {
             console.log('AssistedGrading similar answers: ' + JSON.stringify(similar_answers));
@@ -67,8 +65,8 @@ jQuery(document).ready(function($) {
             for (var i = 0; i < similar_answers.length; i++) {
                 var similar_answer_id = similar_answers[i];
                 // Compare points for similar answer
-                console.log('  Similar answer id ' + similar_answer_id + ' points: ' + points_by_id[similar_answer_id]);
-                if (typeof points_by_id[similar_answer_id] !== 'undefined' && points != points_by_id[similar_answer_id]) {
+                console.log('  Similar answer id ' + similar_answer_id + ' points: ' + marks[similar_answer_id]);
+                if (typeof marks[similar_answer_id] !== 'undefined' && points != marks[similar_answer_id]) {
                     // Highlight sanity check fail
                     $('#' + id_prefix + qubaid).addClass('sanity_check');
                     $('#' + id_prefix + similar_answer_id).addClass('sanity_check');
@@ -83,12 +81,21 @@ jQuery(document).ready(function($) {
         clear_sanity_check();
         var qubaid = get_qubaid_from_input($(this).attr('id'));
         var points = $(this).val();
-        points_by_id[qubaid] = sanitize_input(points);
+        marks[qubaid] = sanitize_input(points);
 
         window.clearTimeout(timer);
         timer = window.setTimeout(function(){
             console.log('AssistedGrading input on id ' + qubaid + ' : ' + points);
             sanity_check(qubaid);
         }, delay);
+    });
+
+    $('.collapsible').on('click', function() {
+        var res = $(this).attr('id').match(/collapse_(\d+)/);
+        if (res) {
+            var qubaid = res[1];
+            console.log('Collapsing ' + qubaid);
+            $('#quba_content_' + qubaid).toggle('slow');
+        }
     });
 });

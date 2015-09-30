@@ -474,9 +474,11 @@ class quiz_assistedgrading_report extends quiz_default_report {
      * Makes quiz data available for JavaScript.
      *
      * @param $data JSON encoded quiz data
+     * @param $marks Contains already given marks
      */
-    protected function print_quiz_data_js($data) {
-        echo html_writer::script('var quiz_data=' . $data . ';');
+    protected function print_quiz_data_js($data, $marks) {
+        echo html_writer::script('var quiz_data=' . json_encode($data, JSON_PRETTY_PRINT) . ';');
+        echo html_writer::script('var marks=' . json_encode($marks, JSON_PRETTY_PRINT) . ';');
     }
 
     protected function display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress, $scoreorder) {
@@ -553,9 +555,10 @@ class quiz_assistedgrading_report extends quiz_default_report {
         html_writer::input_hidden_params(new moodle_url('', array(
             'qubaids' => $qubaidlist, 'slots' => $slot, 'sesskey' => $sesskey)));
 
-        // Compile list for webservice
+        // Compile list for webservice and javascript part
         $wsdata = array();
         $records = array();
+        $marks = array();
         
         // This will be filled by selected students answers
         $add_to_referenceanswer = '';
@@ -569,7 +572,10 @@ class quiz_assistedgrading_report extends quiz_default_report {
             $record['question'] = str_replace("\n", ' ', $quba->get_question_summary($slot));
             $record['referenceanswer'] = str_replace("\n", ' ', $question->graderinfo);
             $record['answer'] = str_replace("\n", ' ', $quba->get_response_summary($slot));
-            
+
+            $record['mark'] = $quba->get_question_mark($slot);
+            $marks[$quba->get_id()] = $quba->get_question_mark($slot);
+
             // Append students answer to reference
             if (is_array($this->addanswers) && in_array($quba->get_id(), $this->addanswers)) {
                 // Adding student answer to reference answer
@@ -597,13 +603,15 @@ class quiz_assistedgrading_report extends quiz_default_report {
 
         // Strip HTML comment tags from debugging info
         $wsdata = str_replace('-->', '', $wsdata);
+        $wsdata = str_replace('<!--', '', $wsdata);
 
         // for debug purposes show request to webservice before posting
         echo "<!-- Request JSON: \n";
-        echo json_encode($wsdata);
+        echo json_encode($wsdata, JSON_PRETTY_PRINT);
         echo "\n-->\n";
         $ws_result = $this->ws_post($wsaddress . self::WS_POST_ADDRESS, $wsdata);
         $ws_result = str_replace('-->', '', $ws_result);
+        $ws_result = str_replace('<!--', '', $ws_result);
         echo "\n\n<!-- Response from webservice:\n";
         print_r($ws_result);
         echo "\n-->\n";
@@ -637,8 +645,8 @@ class quiz_assistedgrading_report extends quiz_default_report {
             }
         }
 
-        // Make quiz data available to javascript for sanity checks
-        $this->print_quiz_data_js(json_encode($json_reply, JSON_PRETTY_PRINT));
+        // Make quiz data and marks available to javascript for sanity checks
+        $this->print_quiz_data_js($json_reply, $marks);
 
         foreach ($qubaids as $qubaid) {
             $attempt = $attempts[$qubaid];
@@ -656,8 +664,11 @@ class quiz_assistedgrading_report extends quiz_default_report {
             
             $heading = $this->get_question_heading($attempt, $shownames, $showidnumbers);
             if ($heading) {
-                echo $OUTPUT->heading($heading, 4);
+                echo $OUTPUT->heading($heading, 4, 'collapsible', 'collapse_' . $quba->get_id());
             }
+            // Inner div will be collapsible
+            echo html_writer::start_div('', array('id' => 'quba_content_' . $quba->get_id()));
+
             echo html_writer::checkbox("addanswer[]", $quba->get_id(), 
                     (is_array($this->addanswers) && in_array($quba->get_id(), $this->addanswers)), 
                     get_string('addanswer', 'quiz_assistedgrading'));
@@ -674,6 +685,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
             //}
             echo $quba->render_question($slot, $displayoptions, $this->questions[$slot]->number);
 
+            echo html_writer::end_div(); // content
             echo html_writer::end_div();
         }
 
