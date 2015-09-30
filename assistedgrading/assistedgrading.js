@@ -24,7 +24,7 @@ jQuery(document).ready(function($) {
      * @returns {*}
      */
     function sanitize_input(input) {
-        return input.replace(',', '.').replace(' ', '');
+        return input.replace(',', '.').replace(' ', '').replace(/0+$/,'');
     }
 
     /**
@@ -66,7 +66,7 @@ jQuery(document).ready(function($) {
                 var similar_answer_id = similar_answers[i];
                 // Compare points for similar answer
                 console.log('  Similar answer id ' + similar_answer_id + ' points: ' + marks[similar_answer_id]);
-                if (typeof marks[similar_answer_id] !== 'undefined' && points != marks[similar_answer_id]) {
+                if (typeof marks[similar_answer_id] !== 'undefined' && marks[similar_answer_id] && points != marks[similar_answer_id]) {
                     // Highlight sanity check fail
                     $('#' + id_prefix + qubaid).addClass('sanity_check');
                     $('#' + id_prefix + similar_answer_id).addClass('sanity_check');
@@ -80,10 +80,11 @@ jQuery(document).ready(function($) {
     $('input[name$="-mark"]').on('input', function() {
         clear_sanity_check();
         var qubaid = get_qubaid_from_input($(this).attr('id'));
-        var points = $(this).val();
-        marks[qubaid] = sanitize_input(points);
+        var points = sanitize_input($(this).val());
+        marks[qubaid] = points;
 
         window.clearTimeout(timer);
+        if (!points) return;
         timer = window.setTimeout(function(){
             console.log('AssistedGrading input on id ' + qubaid + ' : ' + points);
             sanity_check(qubaid);
@@ -95,7 +96,7 @@ jQuery(document).ready(function($) {
         if (res) {
             var qubaid = res[1];
             console.log('Collapsing ' + qubaid);
-            $('#quba_content_' + qubaid).toggle('slow');
+            $('#quba_content_' + qubaid).toggle('fast');
         }
     });
 });
