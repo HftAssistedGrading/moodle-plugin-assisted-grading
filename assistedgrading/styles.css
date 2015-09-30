@@ -1,3 +1,28 @@
 .sanity_check {
-    background: #f99;
+    background: #bf392d;
+    color: #fff;
+}
+
+.sanity_check div.comment {
+    background: #e84c3d;
+    color: #fff;
+}
+
+.sanity_check div.formulation {
+    background: #e84c3d;
+    color: #fff;
+}
+
+.sanity_check div.info {
+    background: #e84c3d;
+    color: #fff;
+}
+
+.sanity_check div.qtype_essay_response {
+    color: #000;
+}
+
+.collapsible:before {
+    content: "\25bc";
+    cursor: pointer;
 }
