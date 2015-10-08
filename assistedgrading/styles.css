@@ -1,0 +1,33 @@
+.sanity_check {
+    background: #bf392d;
+    color: #fff;
+}
+
+.sanity_check div.comment {
+    background: #e84c3d;
+    color: #fff;
+}
+
+.sanity_check div.formulation {
+    background: #e84c3d;
+    color: #fff;
+}
+
+.sanity_check div.info {
+    background: #e84c3d;
+    color: #fff;
+}
+
+.sanity_check div.qtype_essay_response {
+    color: #000;
+}
+
+.collapsible.not-collapsed:before {
+    content: "\25be \00a0";
+    cursor: pointer;
+}
+
+.collapsible.collapsed:before {
+    content: "\25b8 \00a0";
+    cursor: pointer;
+}
