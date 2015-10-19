@@ -1,6 +1,18 @@
+/**
+ * This JavaScript code is part of Assisted Grading plugin for Moodle.
+ *
+ * It mainly performs a sanity check on client side based on
+ * data sent by a webservice. Data is available as embedded
+ * JavaScript part of the generated output by the plugin.
+ *
+ * It relies on data being available as global variable 'quiz_data'.
+ * It uses CSS provided by the plugin to highlight failed sanity checks.
+ *
+ * @author Andre Lohan <31loan1bif@hft-stuttgart.de>
+ */
 jQuery(document).ready(function($) {
 
-    // The id prefix of element for highlighting sanity check warnings
+    // The id prefix of the element for highlighting sanity check warnings
     var id_prefix = 'quba_';
     // Wait a bit before firing sanity check on user input
     var timer;
@@ -10,7 +22,7 @@ jQuery(document).ready(function($) {
      * Parses moodle input id and returns quiz attempt id.
      * For example q10:1_-mark returns quiz id 10
      *
-     * @param $input
+     * @param input_id Element id as String
      */
     function get_qubaid_from_input(input_id) {
         var res = input_id.match(/q(\d+):/);
@@ -21,7 +33,7 @@ jQuery(document).ready(function($) {
      * Cleans up mark input for comparing.
      *
      * @param input
-     * @returns {*}
+     * @returns String
      */
     function sanitize_input(input) {
         return input.replace(',', '.').replace(' ', '').replace(/0+$/,'');
@@ -31,7 +43,7 @@ jQuery(document).ready(function($) {
      * Returns ids of similar answers for sanity check by looping through quiz_data.
      *
      * @param qubaid
-     * @returns {*}
+     * @returns List of ids with similar answer
      */
     function get_similar_answers(qubaid) {
         for (var i = 0; i < quiz_data.length; i++){
@@ -50,7 +62,7 @@ jQuery(document).ready(function($) {
     }
 
     /**
-     * Preforms sanity check on similar student answers.
+     * Performs sanity check on similar student answers.
      * The data is available as quiz_data for JavaScript code.
      * The field sanity_check on quiz_data contains ids of similar student answers.
      *
@@ -91,6 +103,9 @@ jQuery(document).ready(function($) {
         }, delay);
     });
 
+    /**
+     * Makes student answers collapsible
+     */
     $('.collapsible').on('click', function() {
         var res = $(this).attr('id').match(/collapse_(\d+)/);
         var that = this;
@@ -99,11 +114,11 @@ jQuery(document).ready(function($) {
             console.log('Collapsing ' + qubaid);
             $('#quba_content_' + qubaid).toggle('fast', function() {
                 if ($(this).is(':visible')) {
-                    $(that).removeClass('collapsed')
-                    $(that).addClass('not-collapsed')
+                    $(that).removeClass('collapsed');
+                    $(that).addClass('not-collapsed');
                 } else {
-                    $(that).removeClass('not-collapsed')
-                    $(that).addClass('collapsed')
+                    $(that).removeClass('not-collapsed');
+                    $(that).addClass('collapsed');
                 }
             });
         }
