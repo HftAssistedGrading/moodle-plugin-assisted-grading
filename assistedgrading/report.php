@@ -3,6 +3,14 @@
 /**
  * This file defines the quiz assisted grading report class.
  * Based on quiz report.
+ *
+ * The plugin requires a webservice for linguistic computation.
+ * It sends the data with student answers as JSON to the webservice
+ * and expects a reply with JSON data containing additional information.
+ *
+ * Currently supported:
+ * Score based on reference answer as sorting criteria
+ * Sanity check for similar student answers getting same mark
  * 
  * @package   quiz_assistedgrading
  * @copyright 2015 HFT Stuttgart
@@ -24,16 +32,23 @@ require_once($CFG->dirroot . '/mod/quiz/report/assistedgrading/assistedgradingse
  */
 class quiz_assistedgrading_report extends quiz_default_report {
 
+    /** @const Enables debug output in generated HTML to see request/response from webservice. */
+    const DEBUG = false;
     /** @const Used for storing and retrieving plugin configuration. */
     const PLUGIN = 'quiz_assistedgrading';
-    
+
+    /** @const Pagination is currently not supported by assisted grading */
     const DEFAULT_PAGE_SIZE = -1;
+    /** @const Is currently not used by the plugin since score is the only supported sorting criteria. */
     const DEFAULT_ORDER = 'random';
+    /** @const Score order can be 'asc', 'desc' or 'random' */
     const DEFAULT_SCOREORDER = 'desc';
 
     /** @const Webservice default settings. */
     const WS_BASE_ADDRESS = 'http://193.196.143.147:8080/GA/webresources/gradingassistant';
+    /** @const The address to which the data is sent to, appended to WS_BASE_ADDRESS. */
     const WS_POST_ADDRESS = '/post';
+    /** @const Testing address if webservice is available and responding. Expecting a 'true' as reply. */
     const WS_PING_ADDRESS = '/ping';
 
     // Dummy webservice for testing
@@ -48,6 +63,11 @@ class quiz_assistedgrading_report extends quiz_default_report {
     protected $context;
     protected $addanswers;
 
+    /**
+     * Constructor only used to tell Moodle that this plugin requires jQuery.
+     * Compatibility with Moodle 2.7 which uses YUI as main JS framework but
+     * also contains jQuery. With Moodle 2.9 jQuery is the default framework.
+     */
     public function __construct() {
         global $PAGE;
         $PAGE->requires->jquery();
