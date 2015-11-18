@@ -3,6 +3,14 @@
 /**
  * This file defines the quiz assisted grading report class.
  * Based on quiz report.
+ *
+ * The plugin requires a webservice for linguistic computation.
+ * It sends the data with student answers as JSON to the webservice
+ * and expects a reply with JSON data containing additional information.
+ *
+ * Currently supported:
+ * Score based on reference answer as sorting criteria
+ * Sanity check for similar student answers getting same mark
  * 
  * @package   quiz_assistedgrading
  * @copyright 2015 HFT Stuttgart
@@ -24,16 +32,23 @@ require_once($CFG->dirroot . '/mod/quiz/report/assistedgrading/assistedgradingse
  */
 class quiz_assistedgrading_report extends quiz_default_report {
 
+    /** @const Enables debug output in generated HTML to see request/response from webservice. */
+    const DEBUG = false;
     /** @const Used for storing and retrieving plugin configuration. */
     const PLUGIN = 'quiz_assistedgrading';
-    
+
+    /** @const Pagination is currently not supported by assisted grading */
     const DEFAULT_PAGE_SIZE = -1;
+    /** @const Is currently not used by the plugin since score is the only supported sorting criteria. */
     const DEFAULT_ORDER = 'random';
+    /** @const Score order can be 'asc', 'desc' or 'random' */
     const DEFAULT_SCOREORDER = 'desc';
 
     /** @const Webservice default settings. */
     const WS_BASE_ADDRESS = 'http://193.196.143.147:8080/GA/webresources/gradingassistant';
+    /** @const The address to which the data is sent to, appended to WS_BASE_ADDRESS. */
     const WS_POST_ADDRESS = '/post';
+    /** @const Testing address if webservice is available and responding. Expecting a 'true' as reply. */
     const WS_PING_ADDRESS = '/ping';
 
     // Dummy webservice for testing
@@ -46,13 +61,33 @@ class quiz_assistedgrading_report extends quiz_default_report {
     protected $cm;
     protected $quiz;
     protected $context;
+    /** @var Array contains ids of student answers to be added to reference answer */
     protected $addanswers;
 
+    /**
+     * Constructor only used to tell Moodle that this plugin requires jQuery.
+     * Compatibility with Moodle 2.7 which uses YUI as main JS framework but
+     * also contains jQuery. With Moodle 2.9 jQuery is the default framework.
+     */
     public function __construct() {
         global $PAGE;
         $PAGE->requires->jquery();
     }
 
+    /**
+     * Responsible for rendering the view and checking options selected by user.
+     * It either displays a list of questions or the grading interface.
+     *
+     * @param $quiz
+     * @param $cm
+     * @param $course
+     * @return bool true on success
+     * @throws Exception
+     * @throws coding_exception
+     * @throws dml_exception
+     * @throws moodle_exception
+     * @throws required_capability_exception
+     */
     public function display($quiz, $cm, $course) {
         global $CFG, $DB, $PAGE;
 
@@ -84,15 +119,14 @@ class quiz_assistedgrading_report extends quiz_default_report {
                 $wsaddress_cfg !== FALSE ? $wsaddress_cfg : self::WS_BASE_ADDRESS, 
                 PARAM_TEXT
                 );
-        // Store wsaddress setting if required
+        // Store wsaddress setting in plugin settings if required
         if ($wsaddress != $wsaddress_cfg) {
             set_config('wsaddress', $wsaddress, self::PLUGIN);
         }
 
         $scoreorder = optional_param('scoreorder', self::DEFAULT_SCOREORDER, PARAM_ALPHA);
 
-        
-        // Assemble the options requried to reload this page.
+        // Assemble the options required for reloading the page.
         $optparams = array('includeauto', 'page');
         foreach ($optparams as $param) {
             if ($$param) {
@@ -185,6 +219,13 @@ class quiz_assistedgrading_report extends quiz_default_report {
         return true;
     }
 
+    /**
+     * Checks the state of quiz attempts.
+     *
+     * @return qubaid_join
+     * @throws coding_exception
+     * @throws dml_exception
+     */
     protected function get_qubaids_condition() {
         global $DB;
 
@@ -208,6 +249,14 @@ class quiz_assistedgrading_report extends quiz_default_report {
         return new qubaid_join('{quiz_attempts} quiza', 'quiza.uniqueid', $where, $params);
     }
 
+    /**
+     * Loads quiz attempts from database.
+     *
+     * @param Array $qubaids The ids of quiz attempts
+     * @return array
+     * @throws coding_exception
+     * @throws dml_exception
+     */
     protected function load_attempts_by_usage_ids($qubaids) {
         global $DB;
 
@@ -283,6 +332,15 @@ class quiz_assistedgrading_report extends quiz_default_report {
         return $url;
     }
 
+    /**
+     * Used on index page to format number of questions and link them to grading interface.
+     *
+     * @param $counts
+     * @param $type
+     * @param $gradestring
+     * @return string
+     * @throws coding_exception
+     */
     protected function format_count_for_table($counts, $type, $gradestring) {
         $result = $counts->$type;
         if ($counts->$type > 0) {
@@ -292,6 +350,12 @@ class quiz_assistedgrading_report extends quiz_default_report {
         return $result;
     }
 
+    /**
+     * Renders an overview of all questions that require manual grading.
+     *
+     * @param $includeauto
+     * @throws coding_exception
+     */
     protected function display_index($includeauto) {
         global $OUTPUT;
 
@@ -481,9 +545,30 @@ class quiz_assistedgrading_report extends quiz_default_report {
         echo html_writer::script('var marks=' . json_encode($marks, JSON_PRETTY_PRINT) . ';');
     }
 
+    /**
+     * Responsible for rendering grading interface.
+     *
+     * This is also the place where the webserver is being contacted and data exchanged before
+     * displaying them. Data is sent to the webserver, computed there, sent back and sorted here.
+     * If the webservice does not respond to an initial ping, only an error message is displayed.
+     *
+     * @param $slot
+     * @param $questionid
+     * @param $grade
+     * @param $pagesize
+     * @param $page
+     * @param $shownames
+     * @param $showidnumbers
+     * @param $order
+     * @param $counts
+     * @param $wsaddress
+     * @param $scoreorder
+     * @throws coding_exception
+     */
     protected function display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress, $scoreorder) {
         global $OUTPUT, $PAGE, $CFG;
 
+        // Add JavaScript for additional functionality like sanity check on client side
         $PAGE->requires->js( new moodle_url($CFG->wwwroot . '/mod/quiz/report/assistedgrading/assistedgrading.js') );
 
         if ($pagesize * $page >= $counts->$grade) {
@@ -555,9 +640,11 @@ class quiz_assistedgrading_report extends quiz_default_report {
         html_writer::input_hidden_params(new moodle_url('', array(
             'qubaids' => $qubaidlist, 'slots' => $slot, 'sesskey' => $sesskey)));
 
-        // Compile list for webservice and javascript part
+        /** @var Array $wsdata Contains all data sent to webservice */
         $wsdata = array();
+        /** @var Array $records Temporary list of questions and related data */
         $records = array();
+        /** @var Array $marks Contains already given marks and id as key */
         $marks = array();
         
         // This will be filled by selected students answers
@@ -652,14 +739,12 @@ class quiz_assistedgrading_report extends quiz_default_report {
             $attempt = $attempts[$qubaid];
             $quba = question_engine::load_questions_usage_by_activity($qubaid);
 
-            // Inject modified answer from webservice
-
             $displayoptions = quiz_get_review_options($this->quiz, $attempt, $this->context);
             $displayoptions->hide_all_feedback();
             $displayoptions->history = question_display_options::HIDDEN;
             $displayoptions->manualcomment = question_display_options::EDITABLE;
 
-            // Wrap in another div because of not properly used ids by moodle
+            // Wrap in another div for simplifying JavaScript selectors
             echo html_writer::start_div('', array('id' => 'quba_' . $quba->get_id()));
             
             $heading = $this->get_question_heading($attempt, $shownames, $showidnumbers);
@@ -686,7 +771,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
             echo $quba->render_question($slot, $displayoptions, $this->questions[$slot]->number);
 
             echo html_writer::end_div(); // content
-            echo html_writer::end_div();
+            echo html_writer::end_div(); // outer div
         }
 
         echo html_writer::tag('div', html_writer::empty_tag('input', array(
