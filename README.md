@@ -7,7 +7,7 @@ und Bewertungsunterstützung. HMD Praxis der Wirtschaftsinformatik, pages
 1–12.
 
 ## Installation
-1. You can find the packaged web service here: http://www.connsulting.de/software/software.htm or here: http://www.nlpado.de/~ulrike/data.html (You may also look at the source code here: https://github.com/HftKiefer/webservice-assisted-grading and here: https://github.com/HftKiefer/linguistic-analysis-assisted-grading). Deploy the webservice GA.war on your Apache Tomcat.
+1. You can find the packaged web service here: http://www.hft-stuttgart.de/Studienbereiche/Informatik/Bachelor-Informatik/Einrichtungen/MMK-Labor/Projekt-HP-UP/index.html/en?set_language=en&cl=en (You may also look at the source code here: https://github.com/HftAssistedGrading/webservice-assisted-grading and here: https://github.com/HftAssistedGrading/linguistic-analysis-assisted-grading). Deploy the webservice GA.war on your Apache Tomcat.
 2. Put the folder assistedgrading under mod/quiz/report/ in your Moodle installation to install it as a new Moodle plugin.
 
 ## Configuration
