@@ -37,3 +37,4 @@ $string['bystudentlastname'] = 'Nach Nachnamen';
 $string['gradingattemptsxtoyofz'] = 'Versuche {$a->from} bis {$a->to} von {$a->of}';
 $string['random'] = 'Zufällig';
 $string['orderby'] = 'Sortieren nach';
+$string['nojs'] = 'JavaScript ist nicht verfügbar, wird jedoch für den vollen Funktionsumfang des Moduls benötigt!';

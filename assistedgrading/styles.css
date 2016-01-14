@@ -31,3 +31,7 @@
     content: "\25b8 \00a0";
     cursor: pointer;
 }
+
+body.jsenabled .nojshidden {
+    display: none;
+}

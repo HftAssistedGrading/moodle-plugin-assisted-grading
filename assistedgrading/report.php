@@ -48,7 +48,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
     const WS_POST_ADDRESS = '/post';
     /** @const Testing address if webservice is available and responding. Expecting a 'true' as reply. */
     const WS_PING_ADDRESS = '/ping';
-    
+
     protected $viewoptions = array();
     protected $questions;
     protected $cm;
@@ -160,7 +160,6 @@ class quiz_assistedgrading_report extends quiz_default_report {
             throw new moodle_exception('unknownquestion', 'quiz_grading');
         }
 
-        
         // Process any submitted data.
         if ($data = data_submitted() && confirm_sesskey() && $this->validate_submitted_marks()) {
             $this->process_submitted_data();
@@ -559,6 +558,8 @@ class quiz_assistedgrading_report extends quiz_default_report {
 
         // Add JavaScript for additional functionality like sanity check on client side
         $PAGE->requires->js( new moodle_url($CFG->wwwroot . '/mod/quiz/report/assistedgrading/assistedgrading.js') );
+
+        echo $OUTPUT->box(get_string('nojs', 'quiz_assistedgrading'), 'alert alert-error nojshidden');
 
         if ($pagesize * $page >= $counts->$grade) {
             $page = 0;

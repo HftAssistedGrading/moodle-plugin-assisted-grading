@@ -38,3 +38,4 @@ $string['bystudentlastname'] = 'By student last name';
 $string['gradingattemptsxtoyofz'] = 'Grading attempts {$a->from} to {$a->to} of {$a->of}';
 $string['random'] = 'Random';
 $string['orderby'] = 'Sort by';
+$string['nojs'] = 'JavaScript is not available but is required for full functionality of the module!';
