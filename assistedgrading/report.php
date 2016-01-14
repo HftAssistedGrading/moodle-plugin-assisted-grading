@@ -675,21 +675,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
         
         $wsdata['records'] = $records;
 
-        // Strip HTML comment tags from debugging info
-        $wsdata = str_replace('-->', '', $wsdata);
-        $wsdata = str_replace('<!--', '', $wsdata);
-
-        // for debug purposes show request to webservice before posting
-        echo "<!-- Request JSON: \n";
-        echo json_encode($wsdata, JSON_PRETTY_PRINT);
-        echo "\n-->\n";
         $ws_result = $this->ws_post($wsaddress . self::WS_POST_ADDRESS, $wsdata);
-        $ws_result = str_replace('-->', '', $ws_result);
-        $ws_result = str_replace('<!--', '', $ws_result);
-        echo "\n\n<!-- Response from webservice:\n";
-        print_r($ws_result);
-        echo "\n-->\n";
-
         $json_reply = json_decode($ws_result, true);
 
         if (!is_array($json_reply)) {
