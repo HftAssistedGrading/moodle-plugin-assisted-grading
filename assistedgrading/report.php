@@ -48,12 +48,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
     const WS_POST_ADDRESS = '/post';
     /** @const Testing address if webservice is available and responding. Expecting a 'true' as reply. */
     const WS_PING_ADDRESS = '/ping';
-
-    // Dummy webservice for testing
-    //const WS_BASE_ADDRESS = 'http://moodle.localhost';
-    //const WS_POST_ADDRESS = '/ws.php'; // Simple script that generates random score number
-    //const WS_PING_ADDRESS = '/ws_ping.php'; // Just returns true
-
+    
     protected $viewoptions = array();
     protected $questions;
     protected $cm;
