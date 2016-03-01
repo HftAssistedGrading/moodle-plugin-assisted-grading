@@ -79,6 +79,7 @@ class quiz_assistedgrading_settings_form extends moodleform {
             'date' => get_string('bydate', 'quiz_grading'),
             'scoreasc' => get_string('byscoreasc', 'quiz_assistedgrading'),
             'scoredesc' => get_string('byscoredesc', 'quiz_assistedgrading'),
+            'mark' => get_string('bymark', 'quiz_assistedgrading'),
         );
         if ($this->shownames) {
             $orderoptions['studentfirstname'] = get_string('bystudentfirstname', 'quiz_assistedgrading');

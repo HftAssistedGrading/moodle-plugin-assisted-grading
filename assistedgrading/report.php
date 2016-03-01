@@ -142,7 +142,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $showidnumbers = has_capability('quiz/grading:viewidnumber', $this->context);
 
         // Validate order.
-        if (!in_array($order, array('random', 'date', 'studentfirstname', 'studentlastname', 'idnumber', 'scoreasc', 'scoredesc'))) {
+        if (!in_array($order, array('random', 'date', 'studentfirstname', 'studentlastname', 'idnumber', 'scoreasc', 'scoredesc', 'mark'))) {
             $order = self::DEFAULT_ORDER;
         } else if (!$shownames && ($order == 'studentfirstname' || $order == 'studentlastname')) {
             $order = self::DEFAULT_ORDER;
@@ -512,6 +512,20 @@ class quiz_assistedgrading_report extends quiz_default_report {
     }
 
     /**
+     * Used by usort to sort question attempts by mark
+     *
+     * @param Array $a
+     * @param Array $b
+     * @return int
+     */
+    protected function sort_by_mark($a, $b) {
+        if ($a['mark'] == $b['mark']) {
+            return 0;
+        }
+        return ($a['mark'] > $b['mark']) ? -1 : 1;
+    }
+
+    /**
      * Used for usort to randomize question attempts.
      *
      * @param Array $a
@@ -683,29 +697,46 @@ class quiz_assistedgrading_report extends quiz_default_report {
             echo $OUTPUT->notification("Could not parse webservice reply.");
         }
 
+        // Merge webservice reply with records since webservice reply contains only limited amount of fields
+        foreach ($records as $index => $record) {
+            // Find id in webservice reply
+            foreach ($json_reply as $json_item) {
+                if ($json_item['id'] == $record['id']) {
+                    $record = array_merge($record, $json_item);
+                    $records[$index] = $record;
+                    break;
+                }
+            }
+        }
+
+        // Only on certain sorting options need to recompile the list with ids
         $recompileQubaids = false;
 
         // sort attempts by score
         switch ($order) {
             case 'scoreasc':
-                usort($json_reply, array($this, 'sort_by_score_asc'));
+                usort($records, array($this, 'sort_by_score_asc'));
                 $recompileQubaids = true;
                 break;
             case 'scoredesc':
-                usort($json_reply, array($this, 'sort_by_score_desc'));
+                usort($records, array($this, 'sort_by_score_desc'));
+                $recompileQubaids = true;
+                break;
+            case 'mark':
+                usort($records, array($this, 'sort_by_mark'));
                 $recompileQubaids = true;
                 break;
             case 'random':
-                usort($json_reply, array($this, 'sort_by_random'));
+                usort($records, array($this, 'sort_by_random'));
                 $recompileQubaids = true;
                 break;
         }
 
         if ($recompileQubaids) {
-            // compile new qubaids list based on sorted score
+            // compile new qubaids list based on new sorting criteria
             $qubaids = array();
-            foreach ( $json_reply as $json_item ) {
-                $qubaids[] = $json_item['id'];
+            foreach ( $records as $record ) {
+                $qubaids[] = $record['id'];
             }
         }
 
