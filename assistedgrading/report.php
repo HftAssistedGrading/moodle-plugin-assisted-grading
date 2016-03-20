@@ -357,6 +357,10 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $statecounts = $this->get_question_state_summary(array_keys($this->questions));
 
         $data = array();
+
+        //print_r($statecounts);
+        //$attemptobj->get_question_attempt($slot)->qet_question()->qtype
+
         foreach ($statecounts as $counts) {
             if ($counts->all == 0) {
                 continue;
@@ -364,6 +368,13 @@ class quiz_assistedgrading_report extends quiz_default_report {
             if (!$includeauto && $counts->needsgrading == 0 && $counts->manuallygraded == 0) {
                 continue;
             }
+
+            $questiondata = question_bank::load_question($counts->questionid);
+
+            // Skip everything that is not of type essay
+            if ($questiondata->qtype->name() != 'essay') {
+                continue;
+            };
 
             $row = array();
 
