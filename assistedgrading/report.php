@@ -39,10 +39,8 @@ class quiz_assistedgrading_report extends quiz_default_report {
 
     /** @const Pagination is currently not supported by assisted grading */
     const DEFAULT_PAGE_SIZE = -1;
-    /** @const Is currently not used by the plugin since score is the only supported sorting criteria. */
-    const DEFAULT_ORDER = 'random';
-    /** @const Score order can be 'asc', 'desc' or 'random' */
-    const DEFAULT_SCOREORDER = 'desc';
+    /** @const Default order when selected order is not allowed (displaying student names) or not available */
+    const DEFAULT_ORDER = 'scoredesc';
 
     /** @const Webservice default settings. */
     const WS_BASE_ADDRESS = 'http://193.196.143.147:8080/GA/webresources/gradingassistant';
@@ -50,11 +48,6 @@ class quiz_assistedgrading_report extends quiz_default_report {
     const WS_POST_ADDRESS = '/post';
     /** @const Testing address if webservice is available and responding. Expecting a 'true' as reply. */
     const WS_PING_ADDRESS = '/ping';
-
-    // Dummy webservice for testing
-    //const WS_BASE_ADDRESS = 'http://moodle.localhost';
-    //const WS_POST_ADDRESS = '/ws.php'; // Simple script that generates random score number
-    //const WS_PING_ADDRESS = '/ws_ping.php'; // Just returns true
 
     protected $viewoptions = array();
     protected $questions;
@@ -113,18 +106,17 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $pagesize = optional_param('pagesize', self::DEFAULT_PAGE_SIZE, PARAM_INT);
         $page = optional_param('page', 0, PARAM_INT);
         $order = optional_param('order', self::DEFAULT_ORDER, PARAM_ALPHA);
+
         $wsaddress_cfg = get_config(self::PLUGIN, 'wsaddress');
         $wsaddress = optional_param(
                 'wsaddress', 
                 $wsaddress_cfg !== FALSE ? $wsaddress_cfg : self::WS_BASE_ADDRESS, 
                 PARAM_TEXT
-                );
+        );
         // Store wsaddress setting in plugin settings if required
         if ($wsaddress != $wsaddress_cfg) {
             set_config('wsaddress', $wsaddress, self::PLUGIN);
         }
-
-        $scoreorder = optional_param('scoreorder', self::DEFAULT_SCOREORDER, PARAM_ALPHA);
 
         // Assemble the options required for reloading the page.
         $optparams = array('includeauto', 'page');
@@ -142,9 +134,6 @@ class quiz_assistedgrading_report extends quiz_default_report {
         if ($wsaddress != self::WS_POST_ADDRESS) {
             $this->viewoptions['wsaddress'] = $wsaddress;
         }
-        if ($scoreorder != self::DEFAULT_SCOREORDER) {
-            $this->viewoptions['scoreorder'] = $scoreorder;
-        }
 
         // Check permissions.
         $this->context = context_module::instance($cm->id);
@@ -153,7 +142,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $showidnumbers = has_capability('quiz/grading:viewidnumber', $this->context);
 
         // Validate order.
-        if (!in_array($order, array('random', 'date', 'studentfirstname', 'studentlastname', 'idnumber', 'score'))) {
+        if (!in_array($order, array('random', 'date', 'studentfirstname', 'studentlastname', 'idnumber', 'scoreasc', 'scoredesc', 'mark'))) {
             $order = self::DEFAULT_ORDER;
         } else if (!$shownames && ($order == 'studentfirstname' || $order == 'studentlastname')) {
             $order = self::DEFAULT_ORDER;
@@ -171,7 +160,6 @@ class quiz_assistedgrading_report extends quiz_default_report {
             throw new moodle_exception('unknownquestion', 'quiz_grading');
         }
 
-        
         // Process any submitted data.
         if ($data = data_submitted() && confirm_sesskey() && $this->validate_submitted_marks()) {
             $this->process_submitted_data();
@@ -214,7 +202,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
         } else if (!$slot) {
             $this->display_index();
         } else {
-            $this->display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress, $scoreorder);
+            $this->display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress);
         }
         return true;
     }
@@ -369,6 +357,10 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $statecounts = $this->get_question_state_summary(array_keys($this->questions));
 
         $data = array();
+
+        //print_r($statecounts);
+        //$attemptobj->get_question_attempt($slot)->qet_question()->qtype
+
         foreach ($statecounts as $counts) {
             if ($counts->all == 0) {
                 continue;
@@ -376,6 +368,13 @@ class quiz_assistedgrading_report extends quiz_default_report {
             if (!$includeauto && $counts->needsgrading == 0 && $counts->manuallygraded == 0) {
                 continue;
             }
+
+            $questiondata = question_bank::load_question($counts->questionid);
+
+            // Skip everything that is not of type essay
+            if ($questiondata->qtype->name() != 'essay') {
+                continue;
+            };
 
             $row = array();
 
@@ -524,13 +523,27 @@ class quiz_assistedgrading_report extends quiz_default_report {
     }
 
     /**
+     * Used by usort to sort question attempts by mark
+     *
+     * @param Array $a
+     * @param Array $b
+     * @return int
+     */
+    protected function sort_by_mark($a, $b) {
+        if ($a['mark'] == $b['mark']) {
+            return 0;
+        }
+        return ($a['mark'] > $b['mark']) ? -1 : 1;
+    }
+
+    /**
      * Used for usort to randomize question attempts.
      *
      * @param Array $a
      * @param Array $b
      * @return Randomized array
      */
-    protected function sort_by_score_rand($a, $b) {
+    protected function sort_by_random($a, $b) {
         return rand(-1, 1);
     }
 
@@ -565,11 +578,13 @@ class quiz_assistedgrading_report extends quiz_default_report {
      * @param $scoreorder
      * @throws coding_exception
      */
-    protected function display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress, $scoreorder) {
+    protected function display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress) {
         global $OUTPUT, $PAGE, $CFG;
 
         // Add JavaScript for additional functionality like sanity check on client side
         $PAGE->requires->js( new moodle_url($CFG->wwwroot . '/mod/quiz/report/assistedgrading/assistedgrading.js') );
+
+        echo $OUTPUT->box(get_string('nojs', 'quiz_assistedgrading'), 'alert alert-error nojshidden');
 
         if ($pagesize * $page >= $counts->$grade) {
             $page = 0;
@@ -626,10 +641,6 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $a->of = $count;
         echo $OUTPUT->heading(get_string('gradingattemptsxtoyofz', 'quiz_grading', $a), 3);
 
-        if ($count > $pagesize && $order != 'random') {
-            echo $OUTPUT->paging_bar($count, $page, $pagesize, $this->grade_question_url($slot, $questionid, $grade, false));
-        }
-
         // Display the form with one section for each attempt.
         $sesskey = sesskey();
         $qubaidlist = implode(',', $qubaids);
@@ -655,6 +666,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
             $attempt = $attempts[$qubaid];
             $quba = question_engine::load_questions_usage_by_activity($qubaid);
             $question = $quba->get_question($slot);
+
             $record['id'] = intval($quba->get_id());
             $record['question'] = str_replace("\n", ' ', $quba->get_question_summary($slot));
             $record['referenceanswer'] = str_replace("\n", ' ', $question->graderinfo);
@@ -688,21 +700,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
         
         $wsdata['records'] = $records;
 
-        // Strip HTML comment tags from debugging info
-        $wsdata = str_replace('-->', '', $wsdata);
-        $wsdata = str_replace('<!--', '', $wsdata);
-
-        // for debug purposes show request to webservice before posting
-        echo "<!-- Request JSON: \n";
-        echo json_encode($wsdata, JSON_PRETTY_PRINT);
-        echo "\n-->\n";
         $ws_result = $this->ws_post($wsaddress . self::WS_POST_ADDRESS, $wsdata);
-        $ws_result = str_replace('-->', '', $ws_result);
-        $ws_result = str_replace('<!--', '', $ws_result);
-        echo "\n\n<!-- Response from webservice:\n";
-        print_r($ws_result);
-        echo "\n-->\n";
-
         $json_reply = json_decode($ws_result, true);
 
         if (!is_array($json_reply)) {
@@ -710,25 +708,46 @@ class quiz_assistedgrading_report extends quiz_default_report {
             echo $OUTPUT->notification("Could not parse webservice reply.");
         }
 
+        // Merge webservice reply with records since webservice reply contains only limited amount of fields
+        foreach ($records as $index => $record) {
+            // Find id in webservice reply
+            foreach ($json_reply as $json_item) {
+                if ($json_item['id'] == $record['id']) {
+                    $record = array_merge($record, $json_item);
+                    $records[$index] = $record;
+                    break;
+                }
+            }
+        }
+
+        // Only on certain sorting options need to recompile the list with ids
+        $recompileQubaids = false;
+
         // sort attempts by score
-        switch ($scoreorder) {
-            case 'asc':
-                usort($json_reply, array($this, 'sort_by_score_asc'));
+        switch ($order) {
+            case 'scoreasc':
+                usort($records, array($this, 'sort_by_score_asc'));
+                $recompileQubaids = true;
                 break;
-            case 'desc':
-                usort($json_reply, array($this, 'sort_by_score_desc'));
+            case 'scoredesc':
+                usort($records, array($this, 'sort_by_score_desc'));
+                $recompileQubaids = true;
                 break;
-            case 'rand':
-                usort($json_reply, array($this, 'sort_by_score_rand'));
+            case 'mark':
+                usort($records, array($this, 'sort_by_mark'));
+                $recompileQubaids = true;
+                break;
+            case 'random':
+                usort($records, array($this, 'sort_by_random'));
+                $recompileQubaids = true;
                 break;
         }
 
-        //if ($order === 'score') { // Not working yet due to forwarding order to database layer
-        if (true) {
+        if ($recompileQubaids) {
+            // compile new qubaids list based on new sorting criteria
             $qubaids = array();
-            // compile new qubaidslist based on sorted score
-            foreach ($json_reply as $json_item) {
-                $qubaids[] = $json_item['id'];
+            foreach ( $records as $record ) {
+                $qubaids[] = $record['id'];
             }
         }
 
@@ -764,10 +783,12 @@ class quiz_assistedgrading_report extends quiz_default_report {
                     $resp = $rep;
                 }
             }
-            //if ($resp !== null) {
-            //echo html_writer::tag('div', '[Score: ' . $resp['score'] . '] ' . $resp['answer'],
-              //  array('class' => 'alert qtype_essay_response readonly'));
-            //}
+            /**
+            if ($resp !== null) {
+            echo html_writer::tag('div', '[Score: ' . $resp['score'] . '] ' . $resp['answer'],
+                array('class' => 'alert qtype_essay_response readonly'));
+            }
+            */
             echo $quba->render_question($slot, $displayoptions, $this->questions[$slot]->number);
 
             echo html_writer::end_div(); // content
@@ -879,15 +900,9 @@ class quiz_assistedgrading_report extends quiz_default_report {
      *      Ignored if $orderby = random or $pagesize is null.
      * @param int $pagesize implements paging of the results. null = all.
      */
-    protected function get_usage_ids_where_question_in_state($summarystate, $slot, $questionid = null, $orderby = 'random', $page = 0, $pagesize = null) {
+    protected function get_usage_ids_where_question_in_state($summarystate, $slot, $questionid = null, $orderby = 'random') {
         global $CFG, $DB;
         $dm = new question_engine_data_mapper();
-
-        if ($pagesize && $orderby != 'random') {
-            $limitfrom = $page * $pagesize;
-        } else {
-            $limitfrom = 0;
-        }
 
         $qubaids = $this->get_qubaids_condition();
 
@@ -913,9 +928,12 @@ class quiz_assistedgrading_report extends quiz_default_report {
                     $orderby = "u.firstname, u.lastname";
                     break;
             }
+        } else {
+            // Sorting not covered by database layer
+            $orderby = 'random';
         }
 
-        return $dm->load_questions_usages_where_question_in_state($qubaids, $summarystate, $slot, $questionid, $orderby, $params, $limitfrom, $pagesize);
+        return $dm->load_questions_usages_where_question_in_state($qubaids, $summarystate, $slot, $questionid, $orderby, $params);
     }
 
 }

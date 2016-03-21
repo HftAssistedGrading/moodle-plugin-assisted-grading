@@ -77,18 +77,20 @@ class quiz_assistedgrading_settings_form extends moodleform {
         $orderoptions = array(
             'random' => get_string('randomly', 'quiz_grading'),
             'date' => get_string('bydate', 'quiz_grading'),
-            'score' => get_string('byscore', 'quiz_assistedgrading'),
+            'scoreasc' => get_string('byscoreasc', 'quiz_assistedgrading'),
+            'scoredesc' => get_string('byscoredesc', 'quiz_assistedgrading'),
+            'mark' => get_string('bymark', 'quiz_assistedgrading'),
         );
         if ($this->shownames) {
-            $orderoptions['studentfirstname'] = get_string('bystudentfirstname', 'quiz_grading');
-            $orderoptions['studentlastname']  = get_string('bystudentlastname', 'quiz_grading');
+            $orderoptions['studentfirstname'] = get_string('bystudentfirstname', 'quiz_assistedgrading');
+            $orderoptions['studentlastname']  = get_string('bystudentlastname', 'quiz_assistedgrading');
         }
         if ($this->showidnumbers) {
             $orderoptions['idnumber'] = get_string('bystudentidnumber', 'quiz_grading');
         }
         // Temporary disabled due to sorting by score only
-//        $mform->addElement('select', 'order', get_string('orderattempts', 'quiz_grading'),
-//                $orderoptions);
+        $mform->addElement('select', 'order', get_string('orderattempts', 'quiz_grading'),
+                $orderoptions);
 
         foreach ($this->hidden as $name => $value) {
             $mform->addElement('hidden', $name, $value);
@@ -101,13 +103,6 @@ class quiz_assistedgrading_settings_form extends moodleform {
         
         $mform->addElement('text', 'wsaddress', get_string('wsaddress', 'quiz_assistedgrading'));
         $mform->setType('wsaddress', PARAM_NOTAGS);
-
-        $scoreorderoptions = array(
-            'desc' => get_string('byscoredesc', 'quiz_assistedgrading'),
-            'asc' => get_string('byscoreasc', 'quiz_assistedgrading'),
-            'rand' => get_string('byscorerand', 'quiz_assistedgrading'),
-        );
-        $mform->addElement('select', 'scoreorder', get_string('orderby', 'quiz_assistedgrading'), $scoreorderoptions);
 
         $mform->addElement('submit', 'submitbutton', get_string('changeoptions', 'quiz_grading'));
     }
