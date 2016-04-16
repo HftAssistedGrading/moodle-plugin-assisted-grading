@@ -344,7 +344,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
      * @param $includeauto
      * @throws coding_exception
      */
-    protected function display_index($includeauto) {
+    protected function display_index($includeauto = false) {
         global $OUTPUT;
 
         if ($groupmode = groups_get_activity_groupmode($this->cm)) {
