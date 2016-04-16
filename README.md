@@ -11,7 +11,7 @@ und Bewertungsunterstützung. HMD Praxis der Wirtschaftsinformatik, pages
 2. Put the folder assistedgrading under mod/quiz/report/ in your Moodle installation to install it as a new Moodle plugin.
 
 ## Configuration
-After installation the plugin is available within a quiz as separate menu item. You will need to specify the webservice address in the options by accessing a quiz report. The webservice base adress for example may look like this: 'http://123.456.789.123:8080/GA/webresources/gradingassistant'. If the webservice does not respond properly a message will be displayed.
+After installation the plugin is available within a quiz as separate menu item 'Assisted Grading' beneath results along the other grading options. You will need to specify the webservice address in the options by accessing a quiz report. Append '/webresources/gradingassistant' to your deploy path **without a trailing slash**. If you deployed the webservice as /GA the base address may look like this: 'http://123.456.789.123:8080/GA/webresources/gradingassistant'. If the webservice does not respond properly a message will be displayed.
 
 ## Details
 The plugin is a fork of the default quiz report plugin shipped with Moodle and extends it by interacting with a werbservice. Before the HTML for the view is generated it sends the quiz data to the werbservice and sorts the data from the response by a user selected criteria. The data consists of the particular question of the quiz, a reference answer set by the quiz creator and all student answers. The main objective of the werbservice is to calculate a score for each student answer in relation to the reference answer. This score can be used by the plugin for sorting the answers either ascending or descending.
