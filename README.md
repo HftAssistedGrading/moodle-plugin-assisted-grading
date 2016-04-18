@@ -3,17 +3,13 @@ Moodle plugin for assisted manual grading of essay questions
 
 The intention behind this plugin and technical details can be found here:
 Kiefer, C. and Pado, U. (2015). Freitextaufgaben in Online-Tests? Bewertung
-und Bewertungsunterstuetzung. HMD Praxis der Wirtschaftsinformatik, pages
-
-1-12.
-
+und Bewertungsunterstuetzung. HMD Praxis der Wirtschaftsinformatik, pages 1-12.
 
 ## Installation
 1. You can find the packaged web service here: http://www.hft-stuttgart.de/Studienbereiche/Informatik/Bachelor-Informatik/Einrichtungen/MMK-Labor/Projekt-HP-UP/index.html/en?set_language=en&cl=en (You may also look at the source code here: https://github.com/HftAssistedGrading/webservice-assisted-grading and here: https://github.com/HftAssistedGrading/linguistic-analysis-assisted-grading). Deploy the webservice GA.war on your Apache Tomcat.
 2. Put the folder assistedgrading under mod/quiz/report/ in your Moodle installation to install it as a new Moodle plugin.
 
 ## Configuration
-
 After installation the plugin is available within a quiz as separate menu item 'Assisted Grading' beneath results along the other grading options. You will need to specify the webservice address in the options by accessing a quiz report. Append '/webresources/gradingassistant' to your deploy path **without a trailing slash**.  This is done in the options at the top of the plugin display. Choose Unterstuetzte Bewertung and select a question to correct. The plugin page will come up with a field for the deploy path. If you deployed the webservice as /GA the base address may look like this: 'http://123.456.789.123:8080/GA/webresources/gradingassistant'. If the webservice does not respond properly a message will be displayed. If you have trouble connecting to the webservice, check your Tomcat settings to determine the correct path to the webservice.
 
 ## Details
