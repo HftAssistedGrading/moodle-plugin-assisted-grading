@@ -344,7 +344,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
      * @param $includeauto
      * @throws coding_exception
      */
-    protected function display_index($includeauto) {
+    protected function display_index($includeauto = false) {
         global $OUTPUT;
 
         if ($groupmode = groups_get_activity_groupmode($this->cm)) {
@@ -432,6 +432,11 @@ class quiz_assistedgrading_report extends quiz_default_report {
             echo $OUTPUT->notification(get_string('curlnotfound', 'quiz_assistedgrading'));
             return false;
         }
+
+        if (self::DEBUG) {
+            echo $OUTPUT->notification('<h3>Webservice request</h3>' . htmlentities(json_encode($message))); // For debuging print cURL details
+        }
+
         $ch = curl_init();
 
         $headers = array(
@@ -459,10 +464,10 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $debug .= 'cURL CURLOPT_URL: ' . $wsaddress . '<br/>';
         $debug .= 'cURL status: ' . $status . '<br/>';
         $debug .= 'cURL content type: ' . $content_type . '<br/>';
-        $debug .= 'WS reply: ';
-        $debug .= print_r($result, true);
-
-        //echo $OUTPUT->notification($debug); // For debuging print cURL details
+        $debug .= '<br />';
+        if (self::DEBUG) {
+            echo $OUTPUT->notification('<h3>Webservice reply</h3>' . $debug . htmlentities(print_r($result, true))); // For debuging print cURL details
+        }
         return $result;
     }
 
