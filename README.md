@@ -3,7 +3,8 @@ Moodle plugin for assisted manual grading of essay questions
 
 The intention behind this plugin and technical details can be found here:
 Kiefer, C. and Pado, U. (2015). Freitextaufgaben in Online-Tests? Bewertung
-und Bewertungsunterstuetzung. HMD Praxis der Wirtschaftsinformatik, pages 1-12.
+und Bewertungsunterstuetzung. HMD Praxis der Wirtschaftsinformatik, pages
+1--12.
 
 ## Installation
 1. You can find the packaged web service here: http://www.hft-stuttgart.de/Studienbereiche/Informatik/Bachelor-Informatik/Einrichtungen/MMK-Labor/Projekt-HP-UP/index.html/en?set_language=en&cl=en (You may also look at the source code here: https://github.com/HftAssistedGrading/webservice-assisted-grading and here: https://github.com/HftAssistedGrading/linguistic-analysis-assisted-grading). Deploy the webservice GA.war on your Apache Tomcat.
