@@ -33,7 +33,7 @@ require_once($CFG->dirroot . '/mod/quiz/report/assistedgrading/assistedgradingse
 class quiz_assistedgrading_report extends quiz_default_report {
 
     /** @const Enables debug output in generated HTML to see request/response from webservice. */
-    const DEBUG = false;
+    const DEBUG = true;
     /** @const Used for storing and retrieving plugin configuration. */
     const PLUGIN = 'quiz_assistedgrading';
 
@@ -41,6 +41,8 @@ class quiz_assistedgrading_report extends quiz_default_report {
     const DEFAULT_PAGE_SIZE = -1;
     /** @const Default order when selected order is not allowed (displaying student names) or not available */
     const DEFAULT_ORDER = 'scoredesc';
+    
+    const DEFAULT_LANGUAGE = 'de';
 
     /** @const Webservice default settings. */
     const WS_BASE_ADDRESS = 'http://193.196.143.147:8080/GA/webresources/gradingassistant';
@@ -106,7 +108,10 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $pagesize = optional_param('pagesize', self::DEFAULT_PAGE_SIZE, PARAM_INT);
         $page = optional_param('page', 0, PARAM_INT);
         $order = optional_param('order', self::DEFAULT_ORDER, PARAM_ALPHA);
-
+        
+        $languageoptions = optional_param('language', self::DEFAULT_LANGUAGE, PARAM_ALPHA);
+       
+        
         $wsaddress_cfg = get_config(self::PLUGIN, 'wsaddress');
         $wsaddress = optional_param(
                 'wsaddress', 
@@ -131,6 +136,12 @@ class quiz_assistedgrading_report extends quiz_default_report {
         if ($order != self::DEFAULT_ORDER) {
             $this->viewoptions['order'] = $order;
         }
+        
+        if ($languageoptions != self::DEFAULT_LANGUAGE) {
+        	$this->viewoptions['language'] = $languageoptions;
+        }
+        
+        
         if ($wsaddress != self::WS_POST_ADDRESS) {
             $this->viewoptions['wsaddress'] = $wsaddress;
         }
@@ -144,6 +155,8 @@ class quiz_assistedgrading_report extends quiz_default_report {
         // Validate order.
         if (!in_array($order, array('random', 'date', 'studentfirstname', 'studentlastname', 'idnumber', 'scoreasc', 'scoredesc', 'mark'))) {
             $order = self::DEFAULT_ORDER;
+        }else if (!in_array($languageoptions, array('en','de'))) {
+        	$languageoptions = self::DEFAULT_LANGUAGE;
         } else if (!$shownames && ($order == 'studentfirstname' || $order == 'studentlastname')) {
             $order = self::DEFAULT_ORDER;
         } else if (!$showidnumbers && $order == 'idnumber') {
@@ -202,7 +215,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
         } else if (!$slot) {
             $this->display_index();
         } else {
-            $this->display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress);
+            $this->display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress, $languageoptions);
         }
         return true;
     }
@@ -309,6 +322,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
             $url->params(array('addanswers' => implode(',', $addanswers)));
         }
         $url->params($this->viewoptions);
+        
 
         $options = $this->viewoptions;
         if (!$page) {
@@ -432,11 +446,11 @@ class quiz_assistedgrading_report extends quiz_default_report {
             echo $OUTPUT->notification(get_string('curlnotfound', 'quiz_assistedgrading'));
             return false;
         }
-
+		
         if (self::DEBUG) {
             echo $OUTPUT->notification('<h3>Webservice request</h3>' . htmlentities(json_encode($message))); // For debuging print cURL details
         }
-
+		
         $ch = curl_init();
 
         $headers = array(
@@ -580,10 +594,11 @@ class quiz_assistedgrading_report extends quiz_default_report {
      * @param $order
      * @param $counts
      * @param $wsaddress
+     * @param $languageoptions
      * @param $scoreorder
      * @throws coding_exception
      */
-    protected function display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress) {
+    protected function display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress, $languageoptions) {
         global $OUTPUT, $PAGE, $CFG;
 
         // Add JavaScript for additional functionality like sanity check on client side
@@ -599,7 +614,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $pagesize = null;
 
         list($qubaids, $count) = $this->get_usage_ids_where_question_in_state(
-                $grade, $slot, $questionid, $order, $page, $pagesize);
+                $grade, $slot, $questionid, $order, $page, $pagesize, $languageoptions);
         $attempts = $this->load_attempts_by_usage_ids($qubaids);
 
         // Prepare the form.
@@ -620,6 +635,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $settings->grade = $grade;
         $settings->pagesize = $pagesize;
         $settings->order = $order;
+        $settings->languageoptions = $languageoptions;
         $settings->wsaddress = $wsaddress;
         $mform->set_data($settings);
 
@@ -676,10 +692,12 @@ class quiz_assistedgrading_report extends quiz_default_report {
             $record['question'] = str_replace("\n", ' ', $quba->get_question_summary($slot));
             $record['referenceanswer'] = str_replace("\n", ' ', $question->graderinfo);
             $record['answer'] = str_replace("\n", ' ', $quba->get_response_summary($slot));
-
+            $record['languageoptions'] = $languageoptions;
+			
             $record['mark'] = $quba->get_question_mark($slot);
             $marks[$quba->get_id()] = $quba->get_question_mark($slot);
-
+			
+            //echo $record['referenceanswer'];
             // Append students answer to reference
             if (is_array($this->addanswers) && in_array($quba->get_id(), $this->addanswers)) {
                 // Adding student answer to reference answer
@@ -905,7 +923,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
      *      Ignored if $orderby = random or $pagesize is null.
      * @param int $pagesize implements paging of the results. null = all.
      */
-    protected function get_usage_ids_where_question_in_state($summarystate, $slot, $questionid = null, $orderby = 'random') {
+    protected function get_usage_ids_where_question_in_state($summarystate, $slot, $questionid = null, $orderby = 'random', $languageoptions = 'de') {
         global $CFG, $DB;
         $dm = new question_engine_data_mapper();
 
@@ -938,7 +956,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
             $orderby = 'random';
         }
 
-        return $dm->load_questions_usages_where_question_in_state($qubaids, $summarystate, $slot, $questionid, $orderby, $params);
+        return $dm->load_questions_usages_where_question_in_state($qubaids, $summarystate, $slot, $questionid, $orderby, $params,$languageoptions);
     }
 
 }
