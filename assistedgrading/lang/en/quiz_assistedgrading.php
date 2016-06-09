@@ -40,3 +40,7 @@ $string['random'] = 'Random';
 $string['orderby'] = 'Sort by';
 $string['bymark'] = 'By mark';
 $string['nojs'] = 'JavaScript is not available but is required for full functionality of the module!';
+$string['languageoptions'] = 'Language options';
+$string['English'] = 'en';
+$string['German'] = 'de';
+$string['orderattempts'] = 'Order attempts';

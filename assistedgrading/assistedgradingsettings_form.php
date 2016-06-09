@@ -81,6 +81,12 @@ class quiz_assistedgrading_settings_form extends moodleform {
             'scoredesc' => get_string('byscoredesc', 'quiz_assistedgrading'),
             'mark' => get_string('bymark', 'quiz_assistedgrading'),
         );
+        
+        $languageoptions = array(
+        		'de' => get_string('German', 'quiz_assistedgrading'),
+        		'en' => get_string('English', 'quiz_assistedgrading'),
+        );
+        
         if ($this->shownames) {
             $orderoptions['studentfirstname'] = get_string('bystudentfirstname', 'quiz_assistedgrading');
             $orderoptions['studentlastname']  = get_string('bystudentlastname', 'quiz_assistedgrading');
@@ -91,6 +97,9 @@ class quiz_assistedgrading_settings_form extends moodleform {
         // Temporary disabled due to sorting by score only
         $mform->addElement('select', 'order', get_string('orderattempts', 'quiz_grading'),
                 $orderoptions);
+        
+        $mform->addElement('select', 'language', get_string('languageoptions', 'quiz_assistedgrading'),
+        		$languageoptions);
 
         foreach ($this->hidden as $name => $value) {
             $mform->addElement('hidden', $name, $value);
