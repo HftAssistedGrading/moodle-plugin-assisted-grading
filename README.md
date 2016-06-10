@@ -1,17 +1,25 @@
 # moodle-plugin-assisted-grading
 Moodle plugin for assisted manual grading of essay questions
 
-The intention behind this plugin and technical details can be found here:
-Kiefer, C. and Pado, U. (2015). Freitextaufgaben in Online-Tests? Bewertung
-und Bewertungsunterstuetzung. HMD Praxis der Wirtschaftsinformatik, pages
-1--12.
+This tool consists of two parts: The Moodle plugin itself and an external web service that processes student answers so the plugin can display them in an optimised order for manual grading.
+
+The intention behind this plugin can be found in
+Kiefer, C. and Pado, U. (2015). Freitextaufgaben in Online-Tests? Bewertung und Bewertungsunterstuetzung. HMD Praxis der Wirtschaftsinformatik, pages 1--12.
+
+We studied the effectiveness of the answer sorting strategy in the plugin in
+U. Pado and C. Kiefer, Short Answer Grading: When Sorting Helps and When it Doesn't. 4th NLP4CALL workshop at Nodalida, Vilnius, 2015.
 
 ## Installation
-1. You can find the packaged web service here: http://www.hft-stuttgart.de/Studienbereiche/Informatik/Bachelor-Informatik/Einrichtungen/MMK-Labor/Projekt-HP-UP/index.html/en?set_language=en&cl=en (You may also look at the source code here: https://github.com/HftAssistedGrading/webservice-assisted-grading and here: https://github.com/HftAssistedGrading/linguistic-analysis-assisted-grading). Deploy the webservice GA.war on your Apache Tomcat.
-2. Put the folder assistedgrading under mod/quiz/report/ in your Moodle installation to install it as a new Moodle plugin.
+1. Download the Moodle plugin code and put the folder assistedgrading under mod/quiz/report/ in your Moodle installation to install it as a new Moodle plugin. Empty your Moodle cache to make sure everything is displayed correctly.
+
+2.Download the packaged web service from http://www.hft-stuttgart.de/Studienbereiche/Informatik/Bachelor-Informatik/Einrichtungen/MMK-Labor/Projekt-HP-UP/index.html/en?set_language=en&cl=en . Deploy the file GA.war on your Apache Tomcat. (You can find the source code for the webservice at https://github.com/HftAssistedGrading/webservice-assisted-grading and the sources for the linguistic analysis at https://github.com/HftAssistedGrading/linguistic-analysis-assisted-grading).
+
 
 ## Configuration
-After installation the plugin is available within a quiz as separate menu item 'Assisted Grading' beneath results along the other grading options. You will need to specify the webservice address in the options by accessing a quiz report. Append '/webresources/gradingassistant' to your deploy path **without a trailing slash**.  This is done in the options at the top of the plugin display. Choose Unterstuetzte Bewertung and select a question to correct. The plugin page will come up with a field for the deploy path. If you deployed the webservice as /GA the base address may look like this: 'http://123.456.789.123:8080/GA/webresources/gradingassistant'. If the webservice does not respond properly a message will be displayed. If you have trouble connecting to the webservice, check your Tomcat settings to determine the correct path to the webservice.
+After installation the plugin is available within a quiz as menu item 'Assisted Grading'/'Unterstützte Bewertung' beneath the menu item 'Results'/'Bewertung'. Choose a question to grade just as in the original Moodle free text grading view. At the top of the new page, you will need to specify the webservice address. See file AssistedGradingEinfuehrung.pdf for screen shots. If you deployed the webservice as /GA the base address may look like this: 'http://123.456.789.123:8080/GA/webresources/gradingassistant'.  Make sure to append '/webresources/gradingassistant' to your deploy path **without a trailing slash**.  If the webservice does not respond properly a message will be displayed. If you have trouble connecting to the webservice, check your Tomcat settings to determine the correct path to the webservice. 
+
+## How to use
+See file AssistedGradingEinfuehrung.pdf for a short introduction to using the plugin.
 
 ## Details
 The plugin is a fork of the default quiz report plugin shipped with Moodle and extends it by interacting with a werbservice. Before the HTML for the view is generated it sends the quiz data to the werbservice and sorts the data from the response by a user selected criteria. The data consists of the particular question of the quiz, a reference answer set by the quiz creator and all student answers. The main objective of the werbservice is to calculate a score for each student answer in relation to the reference answer. This score can be used by the plugin for sorting the answers either ascending or descending.
