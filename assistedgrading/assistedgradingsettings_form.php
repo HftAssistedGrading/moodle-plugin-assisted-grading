@@ -81,11 +81,24 @@ class quiz_assistedgrading_settings_form extends moodleform {
             'scoredesc' => get_string('byscoredesc', 'quiz_assistedgrading'),
             'mark' => get_string('bymark', 'quiz_assistedgrading'),
         );
-        
+
+        // Language options selector menu
         $languageoptions = array(
-        		'de' => get_string('German', 'quiz_assistedgrading'),
-        		'en' => get_string('English', 'quiz_assistedgrading'),
+            'de' => get_string('German', 'quiz_assistedgrading'),
+            'en' => get_string('English', 'quiz_assistedgrading'),
         );
+        
+        // Threshold for sanity check
+        $mform->addElement('text', 'threshold', get_string('threshold', 'quiz_assistedgrading'));
+        $mform->addHelpButton('threshold', 'threshold', 'quiz_assistedgrading');
+      //  $mform->addRule('threshold', null, 'required', null,'client');
+        $mform->setDefault('threshold', 0.34);
+        $mform->setType('threshold', PARAM_FLOAT);
+        
+       // $mform->registerRule('rangelength', 'function', 'inrange');
+        $mform->addRule('threshold', get_string('threshold_error', 'quiz_assistedgrading'), 'numeric','rangelength','client', false, false );
+
+      // $mform->addRule('threshold', null, 'required', null,'client');
         
         if ($this->shownames) {
             $orderoptions['studentfirstname'] = get_string('bystudentfirstname', 'quiz_assistedgrading');
@@ -97,9 +110,12 @@ class quiz_assistedgrading_settings_form extends moodleform {
         // Temporary disabled due to sorting by score only
         $mform->addElement('select', 'order', get_string('orderattempts', 'quiz_grading'),
                 $orderoptions);
-        
+
         $mform->addElement('select', 'language', get_string('languageoptions', 'quiz_assistedgrading'),
-        		$languageoptions);
+            $languageoptions);
+        
+        //$submitlabel = null;
+        //$this->add_action_buttons(true, $submitlabel);
 
         foreach ($this->hidden as $name => $value) {
             $mform->addElement('hidden', $name, $value);
@@ -115,4 +131,21 @@ class quiz_assistedgrading_settings_form extends moodleform {
 
         $mform->addElement('submit', 'submitbutton', get_string('changeoptions', 'quiz_grading'));
     }
+   
+    function validation($data, $files) {
+    	
+    	$errors = array();
+    	echo "in";
+  		if(!empty($data['threshold'])){
+    		if($data['threshold']>=0 && $data['threshold']<=1) {
+    			return $errors;
+    		}
+    		else {
+    			$errors = get_string('threshold_error','quiz_assistedgrading');
+    			return $errors;
+    		}
+    		}
+    		return $errors;
+    	}
+    	
 }

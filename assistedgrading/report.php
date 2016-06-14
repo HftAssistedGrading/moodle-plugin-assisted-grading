@@ -43,6 +43,8 @@ class quiz_assistedgrading_report extends quiz_default_report {
     const DEFAULT_ORDER = 'scoredesc';
     
     const DEFAULT_LANGUAGE = 'de';
+    
+    const DEFAULT_THRESHOLD = 0.34;
 
     /** @const Webservice default settings. */
     const WS_BASE_ADDRESS = 'http://193.196.143.147:8080/GA/webresources/gradingassistant';
@@ -110,6 +112,8 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $order = optional_param('order', self::DEFAULT_ORDER, PARAM_ALPHA);
         
         $languageoptions = optional_param('language', self::DEFAULT_LANGUAGE, PARAM_ALPHA);
+        
+        $threshold = optional_param('threshold', self::DEFAULT_THRESHOLD, PARAM_FLOAT);
        
         
         $wsaddress_cfg = get_config(self::PLUGIN, 'wsaddress');
@@ -141,6 +145,9 @@ class quiz_assistedgrading_report extends quiz_default_report {
         	$this->viewoptions['language'] = $languageoptions;
         }
         
+        if($threshold != self::DEFAULT_THRESHOLD) {
+        	$this->viewoptions['threshold'] = $threshold;
+        }
         
         if ($wsaddress != self::WS_POST_ADDRESS) {
             $this->viewoptions['wsaddress'] = $wsaddress;
@@ -157,7 +164,10 @@ class quiz_assistedgrading_report extends quiz_default_report {
             $order = self::DEFAULT_ORDER;
         }else if (!in_array($languageoptions, array('en','de'))) {
         	$languageoptions = self::DEFAULT_LANGUAGE;
-        } else if (!$shownames && ($order == 'studentfirstname' || $order == 'studentlastname')) {
+        }else if(!($threshold>=0.0 && $threshold<=1.0)) {
+        	$threshold = self::DEFAULT_THRESHOLD;
+        }
+        else if (!$shownames && ($order == 'studentfirstname' || $order == 'studentlastname')) {
             $order = self::DEFAULT_ORDER;
         } else if (!$showidnumbers && $order == 'idnumber') {
             $order = self::DEFAULT_ORDER;
@@ -215,7 +225,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
         } else if (!$slot) {
             $this->display_index();
         } else {
-            $this->display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress, $languageoptions);
+            $this->display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress, $languageoptions, $threshold);
         }
         return true;
     }
@@ -595,10 +605,11 @@ class quiz_assistedgrading_report extends quiz_default_report {
      * @param $counts
      * @param $wsaddress
      * @param $languageoptions
+     * @param $threshold
      * @param $scoreorder
      * @throws coding_exception
      */
-    protected function display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress, $languageoptions) {
+    protected function display_grading_interface($slot, $questionid, $grade, $pagesize, $page, $shownames, $showidnumbers, $order, $counts, $wsaddress, $languageoptions, $threshold) {
         global $OUTPUT, $PAGE, $CFG;
 
         // Add JavaScript for additional functionality like sanity check on client side
@@ -614,7 +625,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $pagesize = null;
 
         list($qubaids, $count) = $this->get_usage_ids_where_question_in_state(
-                $grade, $slot, $questionid, $order, $page, $pagesize, $languageoptions);
+                $grade, $slot, $questionid, $order, $page, $pagesize, $languageoptions, $threshold);
         $attempts = $this->load_attempts_by_usage_ids($qubaids);
 
         // Prepare the form.
@@ -636,6 +647,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
         $settings->pagesize = $pagesize;
         $settings->order = $order;
         $settings->languageoptions = $languageoptions;
+        $settings->threshold = $threshold;
         $settings->wsaddress = $wsaddress;
         $mform->set_data($settings);
 
@@ -693,6 +705,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
             $record['referenceanswer'] = str_replace("\n", ' ', $question->graderinfo);
             $record['answer'] = str_replace("\n", ' ', $quba->get_response_summary($slot));
             $record['languageoptions'] = $languageoptions;
+            $record['threshold'] = $threshold;
 			
             $record['mark'] = $quba->get_question_mark($slot);
             $marks[$quba->get_id()] = $quba->get_question_mark($slot);
@@ -701,8 +714,9 @@ class quiz_assistedgrading_report extends quiz_default_report {
             // Append students answer to reference
             if (is_array($this->addanswers) && in_array($quba->get_id(), $this->addanswers)) {
                 // Adding student answer to reference answer
-                $add_to_referenceanswer .= "\n".$record['answer'];
+                $add_to_referenceanswer .= "_NEXTANSWER_".$record['answer'];
             }
+            
             
             //$record['rightanswer'] = $quba->get_right_answer_summary($slot); // Not used by moodle
             $record['max'] = $question->defaultmark;
@@ -720,6 +734,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
                 $records[$key] = $record;
             }
         }
+        
         
         $wsdata['records'] = $records;
 
@@ -923,7 +938,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
      *      Ignored if $orderby = random or $pagesize is null.
      * @param int $pagesize implements paging of the results. null = all.
      */
-    protected function get_usage_ids_where_question_in_state($summarystate, $slot, $questionid = null, $orderby = 'random', $languageoptions = 'de') {
+    protected function get_usage_ids_where_question_in_state($summarystate, $slot, $questionid = null, $orderby = 'random', $languageoptions = 'de', $threshold = 0.34) {
         global $CFG, $DB;
         $dm = new question_engine_data_mapper();
 
@@ -956,7 +971,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
             $orderby = 'random';
         }
 
-        return $dm->load_questions_usages_where_question_in_state($qubaids, $summarystate, $slot, $questionid, $orderby, $params,$languageoptions);
+        return $dm->load_questions_usages_where_question_in_state($qubaids, $summarystate, $slot, $questionid, $orderby, $params,$languageoptions, $threshold);
     }
 
 }
