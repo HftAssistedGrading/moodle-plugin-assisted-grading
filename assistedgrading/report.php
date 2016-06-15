@@ -33,7 +33,7 @@ require_once($CFG->dirroot . '/mod/quiz/report/assistedgrading/assistedgradingse
 class quiz_assistedgrading_report extends quiz_default_report {
 
     /** @const Enables debug output in generated HTML to see request/response from webservice. */
-    const DEBUG = true;
+    const DEBUG = false;
     /** @const Used for storing and retrieving plugin configuration. */
     const PLUGIN = 'quiz_assistedgrading';
 
