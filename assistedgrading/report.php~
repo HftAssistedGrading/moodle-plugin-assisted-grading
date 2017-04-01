@@ -47,7 +47,7 @@ class quiz_assistedgrading_report extends quiz_default_report {
     const DEFAULT_THRESHOLD = 0.34;
 
     /** @const Webservice default settings. */
-    const WS_BASE_ADDRESS = 'http://localhost:8080/GA/webresources/gradingassistant';
+    const WS_BASE_ADDRESS = 'http://193.196.143.147:8080/GA/webresources/gradingassistant';
     /** @const The address to which the data is sent to, appended to WS_BASE_ADDRESS. */
     const WS_POST_ADDRESS = '/post';
     /** @const Testing address if webservice is available and responding. Expecting a 'true' as reply. */
